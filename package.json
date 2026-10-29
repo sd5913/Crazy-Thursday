@@ -1,0 +1,14 @@
+{
+  "name": "crazy-thursday-app",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test",
+    "android:sync": "npm run build && cap sync android"
+  },
+  "dependencies": {"@capacitor/android": "8.5.3", "@capacitor/core": "8.5.3"},
+  "devDependencies": {"@capacitor/cli": "8.5.3"},
+  "engines": {"node": ">=22"}
+}

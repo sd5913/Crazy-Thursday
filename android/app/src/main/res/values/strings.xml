@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Crazy Thursday</string>
+    <string name="title_activity_main">Crazy Thursday</string>
+    <string name="package_name">org.sd5913.crazythursday</string>
+    <string name="custom_url_scheme">org.sd5913.crazythursday</string>
+</resources>
