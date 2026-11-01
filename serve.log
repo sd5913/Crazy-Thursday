@@ -1,0 +1,29 @@
+ INFO  Accepting connections at http://localhost:5050
+ HTTP  2026/11/2 00:05:12 ::1 GET /
+ HTTP  2026/11/2 00:05:12 ::1 Returned 200 in 19 ms
+ HTTP  2026/11/2 00:09:47 127.0.0.1 GET /
+ HTTP  2026/11/2 00:09:47 127.0.0.1 Returned 200 in 3 ms
+ HTTP  2026/11/2 00:09:47 127.0.0.1 GET /style.css
+ HTTP  2026/11/2 00:09:47 127.0.0.1 GET /app.js
+ HTTP  2026/11/2 00:09:47 127.0.0.1 Returned 200 in 5 ms
+ HTTP  2026/11/2 00:09:47 127.0.0.1 Returned 200 in 23 ms
+ HTTP  2026/11/2 00:09:47 127.0.0.1 GET /game.js
+ HTTP  2026/11/2 00:09:47 127.0.0.1 Returned 200 in 28 ms
+ HTTP  2026/11/2 00:09:47 127.0.0.1 GET /logic.js
+ HTTP  2026/11/2 00:09:47 127.0.0.1 GET /face.js
+ HTTP  2026/11/2 00:09:47 127.0.0.1 Returned 200 in 5 ms
+ HTTP  2026/11/2 00:09:47 127.0.0.1 Returned 200 in 27 ms
+ HTTP  2026/11/2 00:09:47 127.0.0.1 GET /favicon.ico
+ HTTP  2026/11/2 00:09:47 127.0.0.1 Returned 404 in 3 ms
+ HTTP  2026/11/2 00:11:26 ::1 GET /
+ HTTP  2026/11/2 00:11:26 ::1 Returned 304 in 2 ms
+ HTTP  2026/11/2 00:11:26 ::1 GET /style.css
+ HTTP  2026/11/2 00:11:26 ::1 GET /app.js
+ HTTP  2026/11/2 00:11:26 ::1 Returned 304 in 3 ms
+ HTTP  2026/11/2 00:11:26 ::1 Returned 304 in 1 ms
+ HTTP  2026/11/2 00:11:26 ::1 GET /game.js
+ HTTP  2026/11/2 00:11:26 ::1 Returned 304 in 1 ms
+ HTTP  2026/11/2 00:11:26 ::1 GET /face.js
+ HTTP  2026/11/2 00:11:26 ::1 Returned 304 in 1 ms
+ HTTP  2026/11/2 00:11:26 ::1 GET /logic.js
+ HTTP  2026/11/2 00:11:26 ::1 Returned 304 in 1 ms

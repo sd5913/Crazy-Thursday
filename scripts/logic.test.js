@@ -40,7 +40,7 @@ test('classifyExpression maps each pose', () => {
   assert.equal(classifyExpression(cats({ mouthSmileLeft: 0.9, mouthSmileRight: 0.9 }), TH), EXPRESSIONS.SMILE);
   assert.equal(classifyExpression(cats({ mouthFrownLeft: 0.8, mouthFrownRight: 0.8 }), TH), EXPRESSIONS.FROWN);
   assert.equal(classifyExpression(cats({ jawOpen: 0.95, tongueOut: 0.7 }), TH), EXPRESSIONS.VOMIT);
-  assert.equal(classifyExpression(cats({ jawOpen: 0.5 }), TH), EXPRESSIONS.VOMIT); // extremely open fallback
+  assert.equal(classifyExpression(cats({ jawOpen: 0.98 }), TH), EXPRESSIONS.VOMIT); // wider than calibrated open, no tongue
   assert.equal(classifyExpression(cats({}), TH), EXPRESSIONS.NEUTRAL);
   assert.equal(classifyExpression(null, TH), EXPRESSIONS.NEUTRAL);
 });

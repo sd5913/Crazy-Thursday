@@ -30,7 +30,7 @@ const BADGE_TEXT = {
   none: '未检测到人脸',
 };
 
-export async function startGame() {
+export async function startGame(mode = 'camera') {
   const el = {
     video: document.getElementById('cam'),
     overlay: document.getElementById('overlay'),
@@ -68,6 +68,31 @@ export async function startGame() {
     el.badge.dataset.expr = expr;
   };
   const setSubtitle = (text) => (el.subtitle.textContent = text);
+
+  // --- keyboard demo mode (no camera) -------------------------------------
+  const isDemo = mode === 'demo';
+  const KEY_MAP = { s: 'smile', f: 'frown', v: 'vomit' };
+  let demoExpr = null;
+  if (isDemo) {
+    window.addEventListener('keydown', (e) => {
+      const k = e.key.toLowerCase();
+      if (KEY_MAP[k]) demoExpr = KEY_MAP[k];
+    });
+    window.addEventListener('keyup', (e) => {
+      const k = e.key.toLowerCase();
+      if (KEY_MAP[k]) demoExpr = null;
+    });
+  }
+  function demoCategories(expr) {
+    const base = { mouthSmileLeft: 0, mouthSmileRight: 0, mouthFrownLeft: 0, mouthFrownRight: 0, jawOpen: 0, tongueOut: 0 };
+    if (expr === 'smile') Object.assign(base, { mouthSmileLeft: 1, mouthSmileRight: 1 });
+    else if (expr === 'frown') Object.assign(base, { mouthFrownLeft: 1, mouthFrownRight: 1 });
+    else if (expr === 'vomit') Object.assign(base, { jawOpen: 1, tongueOut: 1 });
+    return Object.entries(base).map(([categoryName, score]) => ({ categoryName, score }));
+  }
+  function currentCategories() {
+    return isDemo ? demoCategories(demoExpr) : detectFace(el.video);
+  }
 
   function showOverlay(html) {
     el.panel.innerHTML = html;
@@ -200,7 +225,7 @@ export async function startGame() {
 
   // --- main loop -----------------------------------------------------------
   function loop(now) {
-    const categories = detectFace(el.video);
+    const categories = currentCategories();
     state.lastCategories = categories;
     const expr = classifyExpression(categories, state.thresholds);
     setBadge(categories ? expr : 'none');
@@ -236,6 +261,15 @@ export async function startGame() {
 
   // --- boot ----------------------------------------------------------------
   try {
+    if (isDemo) {
+      state.thresholds = buildThresholds(null); // use literature floors; no calibration
+      hideOverlay();
+      setSubtitle('键盘：S 接受 · F 拒绝 · V 呕吐 · 松开 无表情');
+      state.startTime = performance.now();
+      startRound();
+      requestAnimationFrame(loop);
+      return;
+    }
     showOverlay('<h1>表情喂食</h1><p>正在打开摄像头并加载模型…</p>');
     const stream = await openCamera();
     el.video.srcObject = stream;
