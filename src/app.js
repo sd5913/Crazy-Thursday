@@ -1,8 +1,8 @@
-import { nextMessage } from './logic.js';
-let count = 0;
-const button = document.querySelector('#signal');
-button.addEventListener('click', () => {
-  count += 1;
-  document.body.classList.toggle('active');
-  document.querySelector('#status').textContent = nextMessage(count);
-});
+// Entry point for the expression-feeding game.
+// The start button is the user gesture that unlocks the camera.
+import { startGame } from './game.js';
+
+const startBtn = document.getElementById('startBtn');
+if (startBtn) {
+  startBtn.addEventListener('click', () => startGame());
+}

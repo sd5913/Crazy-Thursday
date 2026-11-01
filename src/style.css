@@ -1,1 +1,158 @@
-:root{font-family:Georgia,serif;color:#f5f0df;background:#162a29}*{box-sizing:border-box}body{min-height:100dvh;margin:0;display:grid;place-items:center;background:radial-gradient(circle at 80% 18%,#375e50,transparent 42%),#162a29}main{width:min(90vw,700px);padding:3rem 0}.eyebrow{font:700 .75rem monospace;letter-spacing:.18em;color:#ffcc71}h1{font-size:clamp(3.8rem,13vw,8rem);line-height:.9;letter-spacing:-.06em;margin:1rem 0 2rem}h1 em{font-weight:400;color:#f3b66c}p{font-size:1.2rem;line-height:1.5;max-width:35rem}button{border:0;background:#f3b66c;color:#162a29;padding:1rem 1.3rem;font:700 1rem monospace;cursor:pointer}button span{margin-left:2rem}#status{font:1rem monospace;min-height:2rem}body.active{background:radial-gradient(circle at 80% 18%,#d58a51,transparent 45%),#203f38}
+:root {
+  font-family: Georgia, "PingFang SC", "Microsoft YaHei", serif;
+  color: #f5f0df;
+  --bg: #162a29;
+  --accent: #f3b66c;
+  --danger: #e0553f;
+  background: var(--bg);
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+
+.stage {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 18%, #2c4a44, transparent 55%), var(--bg);
+}
+
+/* Camera preview sits behind everything, mirrored, faint, so the player can see
+   their own face act as the patient. Detection still runs on this <video>. */
+#cam {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+  opacity: 0.32;
+  z-index: 0;
+}
+
+.hud {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1rem 1.4rem;
+  z-index: 3;
+  pointer-events: none;
+}
+.score {
+  font: 700 1.1rem monospace;
+  letter-spacing: .1em;
+  background: rgba(0,0,0,.35);
+  padding: .4rem .7rem;
+  border-radius: .4rem;
+}
+.score span { color: var(--accent); }
+.discomfort { text-align: right; font: 700 .8rem monospace; letter-spacing: .15em; }
+.discomfort .bar {
+  margin-top: .3rem;
+  width: 42vw; max-width: 320px; height: 14px;
+  background: rgba(255,255,255,.15);
+  border-radius: 8px; overflow: hidden;
+}
+#discomfortFill {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, #f3b66c, var(--danger));
+  transition: width .25s ease;
+}
+
+.scene {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.nurse {
+  position: absolute;
+  top: 6%; left: 50%;
+  transform: translateX(-50%);
+  font-size: clamp(3rem, 12vw, 6rem);
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,.4));
+}
+.patient {
+  position: absolute;
+  bottom: -2%; left: 50%;
+  transform: translateX(-50%);
+  font-size: clamp(5rem, 26vw, 12rem);
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,.5));
+}
+.spoon {
+  position: absolute;
+  top: 8%; left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  transition: opacity .2s ease;
+}
+.spoon .item {
+  font-size: clamp(2.4rem, 9vw, 4rem);
+  background: rgba(243,182,108,.18);
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  width: 1.8em; height: 1.8em;
+  display: grid; place-items: center;
+  box-shadow: 0 6px 14px rgba(0,0,0,.45);
+}
+
+.badge {
+  position: absolute;
+  left: 1.4rem; bottom: 1.4rem;
+  z-index: 3;
+  font: 700 1rem monospace;
+  padding: .5rem .8rem;
+  border-radius: .5rem;
+  background: rgba(0,0,0,.45);
+  border: 2px solid #6b8e87;
+}
+.badge[data-expr="smile"] { border-color: #7bd88f; color: #bdf3c8; }
+.badge[data-expr="frown"] { border-color: #e0a93f; color: #f6d79a; }
+.badge[data-expr="vomit"] { border-color: var(--danger); color: #ffb3a3; }
+.badge[data-expr="neutral"], .badge[data-expr="none"] { border-color: #6b8e87; }
+
+.subtitle {
+  position: absolute;
+  left: 50%; bottom: 2rem;
+  transform: translateX(-50%);
+  z-index: 3;
+  width: min(90vw, 640px);
+  text-align: center;
+  font-size: 1.4rem;
+  font-weight: 700;
+  text-shadow: 0 2px 6px rgba(0,0,0,.7);
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  background: rgba(10,18,17,.78);
+  backdrop-filter: blur(3px);
+}
+.overlay[hidden] { display: none; }
+.panel {
+  width: min(90vw, 480px);
+  background: #1d3431;
+  border: 1px solid #2f4d48;
+  border-radius: 1rem;
+  padding: 2rem;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0,0,0,.5);
+}
+.panel h1 { margin: 0 0 1rem; font-size: 2rem; color: var(--accent); }
+.panel p { line-height: 1.6; opacity: .9; }
+.panel button, #startBtn {
+  margin-top: 1.4rem;
+  border: 0;
+  background: var(--accent);
+  color: #162a29;
+  padding: 1rem 1.4rem;
+  font: 700 1rem monospace;
+  cursor: pointer;
+  border-radius: .5rem;
+}
+.panel strong { color: var(--accent); }
