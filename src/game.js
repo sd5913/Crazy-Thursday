@@ -10,7 +10,7 @@ import {
   intentFromExpression,
   judge,
   buildThresholds,
-  speedForRound,
+  speedForLevel,
   applyRescue,
   randomItem,
   SCORING,
@@ -20,14 +20,20 @@ const RESULT_MS = 900;
 const RESCUE_MS = 2500;
 const SAMPLE_MS = 1500;
 
-const NURSE_LINES = ['来，啊——', '张嘴，乖。', '补补营养。', '尝尝这个。', '今天也要乖乖的。'];
+const NURSE_LINES = [
+  'Open up. It is for your own good.',
+  'Be a dear and swallow.',
+  'Doctor says you need the nutrients.',
+  'Try this little something.',
+  'You are doing so well today.',
+];
 
 const BADGE_TEXT = {
-  [EXPRESSIONS.SMILE]: '微笑 · 接受',
-  [EXPRESSIONS.FROWN]: '撇嘴 · 拒绝',
-  [EXPRESSIONS.VOMIT]: '张嘴伸舌 · 呕吐',
-  [EXPRESSIONS.NEUTRAL]: '无表情',
-  none: '未检测到人脸',
+  [EXPRESSIONS.SMILE]: 'SMILE · accepting',
+  [EXPRESSIONS.FROWN]: 'FROWN · refusing',
+  [EXPRESSIONS.VOMIT]: 'GAG · vomiting',
+  [EXPRESSIONS.NEUTRAL]: 'blank stare',
+  none: 'no face detected',
 };
 
 export async function startGame(mode = 'camera') {
@@ -41,7 +47,7 @@ export async function startGame(mode = 'camera') {
     item: document.getElementById('item'),
     badge: document.getElementById('exprBadge'),
     subtitle: document.getElementById('subtitle'),
-    patient: document.getElementById('patient'),
+    combo: document.getElementById('combo'),
   };
 
   const state = {
@@ -49,14 +55,17 @@ export async function startGame(mode = 'camera') {
     score: 0,
     discomfort: 0,
     round: 0,
+    level: 0,
     thresholds: null,
     item: null,
     phaseStart: 0,
     phaseDuration: 0,
     lastIntent: INTENT.NEUTRAL,
     rescueResolved: false,
+    prevExpr: null,
     startTime: 0,
     wrongEats: 0,
+    combo: 0,
     lastCategories: null,
   };
 
@@ -68,6 +77,15 @@ export async function startGame(mode = 'camera') {
     el.badge.dataset.expr = expr;
   };
   const setSubtitle = (text) => (el.subtitle.textContent = text);
+  const setCombo = () => {
+    el.combo.textContent = `combo ×${state.combo}`;
+    el.combo.hidden = state.combo < 2; // a streak only shows from ×2 up
+    if (state.combo >= 2) {
+      el.combo.classList.remove('pop');
+      void el.combo.offsetWidth; // restart the pop animation
+      el.combo.classList.add('pop');
+    }
+  };
 
   // --- keyboard demo mode (no camera) -------------------------------------
   const isDemo = mode === 'demo';
@@ -137,19 +155,19 @@ export async function startGame(mode = 'camera') {
   async function calibrate() {
     const cal = {};
     const steps = [
-      { key: 'neutral', title: '校准 1/4 · 放松', hint: '保持自然表情，点击开始采样。' },
-      { key: 'smile', title: '校准 2/4 · 微笑', hint: '露出明显的微笑，点击开始采样。' },
-      { key: 'frown', title: '校准 3/4 · 撇嘴', hint: '向下撇嘴表示拒绝，点击开始采样。' },
-      { key: 'vomit', title: '校准 4/4 · 呕吐', hint: '张大嘴并尽量伸舌头，点击开始采样。' },
+      { key: 'neutral', title: 'Calibration 1/4 · Relax', hint: 'Keep a neutral face. Click to sample.' },
+      { key: 'smile', title: 'Calibration 2/4 · Smile', hint: 'The face you make for food you like. Click to sample.' },
+      { key: 'frown', title: 'Calibration 3/4 · Frown', hint: 'The face you make for regret. Click to sample.' },
+      { key: 'vomit', title: 'Calibration 4/4 · Gag', hint: 'The face you make for actual vomit. Click to sample.' },
     ];
     for (const step of steps) {
       await new Promise((done) => {
         showOverlay(
           `<h1>${step.title}</h1><p>${step.hint}</p>` +
-          `<button id="calBtn" type="button">开始采样</button>`
+          `<button id="calBtn" type="button">Start sampling</button>`
         );
         document.getElementById('calBtn').addEventListener('click', async () => {
-          setSubtitle('采集中…');
+          setSubtitle('Sampling…');
           cal[step.key] = await sampleMax(SAMPLE_MS);
           done();
         });
@@ -162,11 +180,14 @@ export async function startGame(mode = 'camera') {
   function startRound() {
     state.round += 1;
     state.item = randomItem();
-    el.item.textContent = state.item.emoji;
-    const speed = speedForRound(state.round - 1);
+    el.item.src = state.item.image;
+    el.item.alt = state.item.name;
+    const speed = speedForLevel(state.level);
     state.phase = 'serving';
     state.phaseStart = performance.now();
     state.phaseDuration = speed.travelMs;
+    el.spoon.style.opacity = '0';
+    el.spoon.style.transform = 'translate(-74%, -70%) scale(2)';
     setSubtitle(state.item.line || NURSE_LINES[state.round % NURSE_LINES.length]);
   }
 
@@ -177,13 +198,27 @@ export async function startGame(mode = 'camera') {
     setScore();
     setDiscomfort();
 
+    // Difficulty only climbs on a correct play (good food + smile, or foreign
+    // object + frown); a wrong bite slows it back down, never below level 0.
+    // A correct play also extends the combo streak; any miss breaks it.
+    if (outcome.type === OUTCOME.CORRECT_ACCEPT || outcome.type === OUTCOME.CORRECT_REJECT) {
+      state.level += 1;
+      state.combo += 1;
+    } else if (outcome.type === OUTCOME.WRONG_EAT) {
+      state.level = Math.max(0, state.level - 1);
+      state.combo = 0;
+    } else {
+      state.combo = 0; // DECLINED_FOOD (missed a good bite) breaks the streak
+    }
+    setCombo();
+
     if (outcome.type === OUTCOME.WRONG_EAT) {
       state.wrongEats += 1;
       state.phase = 'rescue';
       state.rescueResolved = false;
       state.phaseStart = performance.now();
       state.phaseDuration = RESCUE_MS;
-      setSubtitle('误食！快张嘴伸舌呕吐！');
+      setSubtitle('Wrong bite! Gag now!');
       return;
     }
     flashResult(outcome);
@@ -191,9 +226,9 @@ export async function startGame(mode = 'camera') {
 
   function flashResult(outcome) {
     const msg = {
-      [OUTCOME.CORRECT_ACCEPT]: '好吃！+10',
-      [OUTCOME.CORRECT_REJECT]: '拒得好！+10',
-      [OUTCOME.DECLINED_FOOD]: '你拒绝了食物',
+      [OUTCOME.CORRECT_ACCEPT]: 'Swallowed. +10',
+      [OUTCOME.CORRECT_REJECT]: 'Rejected. +10',
+      [OUTCOME.DECLINED_FOOD]: 'You declined food.',
     }[outcome.type];
     setSubtitle(msg);
     state.phase = 'result';
@@ -205,7 +240,7 @@ export async function startGame(mode = 'camera') {
     const before = state.discomfort;
     state.discomfort = applyRescue(before, success);
     setDiscomfort();
-    setSubtitle(success ? `呕吐成功，难受 -${before - state.discomfort}` : '没吐出来，更难受了…');
+    setSubtitle(success ? `Upchucked. Discomfort -${before - state.discomfort}` : 'Held it in. Discomfort worsens…');
     state.phase = 'result';
     state.phaseStart = performance.now();
     state.phaseDuration = RESULT_MS;
@@ -215,10 +250,10 @@ export async function startGame(mode = 'camera') {
     state.phase = 'gameover';
     const seconds = Math.round((performance.now() - state.startTime) / 1000);
     showOverlay(
-      `<h1>游戏结束</h1>` +
-      `<p>得分 <strong>${state.score}</strong></p>` +
-      `<p>坚持 <strong>${seconds}</strong> 秒 · 误食 <strong>${state.wrongEats}</strong> 次</p>` +
-      `<button id="againBtn" type="button">再来一次</button>`
+      `<h1>Game Over</h1>` +
+      `<p>Score <strong>${state.score}</strong></p>` +
+      `<p>Survived <strong>${seconds}</strong> s · Wrong bites <strong>${state.wrongEats}</strong></p>` +
+      `<button id="againBtn" type="button">Play Again</button>`
     );
     document.getElementById('againBtn').addEventListener('click', () => location.reload());
   }
@@ -232,13 +267,19 @@ export async function startGame(mode = 'camera') {
 
     if (state.phase === 'serving') {
       const progress = Math.min(1, (now - state.phaseStart) / state.phaseDuration);
-      el.spoon.style.top = `${8 + progress * 60}%`;
-      el.spoon.style.opacity = '1';
+      // Spoon+food grow together, pinned at the bowl (screen centre).
+      el.spoon.style.transform = `translate(-74%, -70%) scale(${2 + progress * 2})`;
+      // Fade the hand+spoon to opaque quickly (within the first 25% of the
+      // serve), then hold. The scale motion above is unchanged.
+      el.spoon.style.opacity = String(Math.min(1, progress * 4));
       state.lastIntent = intentFromExpression(categories, state.thresholds);
       if (progress >= 1) resolveServe();
     } else if (state.phase === 'rescue') {
       if (!state.rescueResolved) {
-        if (expr === EXPRESSIONS.VOMIT) {
+        // Only a fresh vomit edge counts: if the player was already holding the
+        // vomit face from the feeding phase, they must release and re-do it.
+        // Otherwise holding V the whole time would auto-pass both food types.
+        if (state.prevExpr !== EXPRESSIONS.VOMIT && expr === EXPRESSIONS.VOMIT) {
           state.rescueResolved = true;
           resolveRescue(true);
         } else if (now - state.phaseStart >= state.phaseDuration) {
@@ -256,6 +297,7 @@ export async function startGame(mode = 'camera') {
 
     // Game over is decided when a result/feedback phase ends, so a maxed-out
     // rescue still gets to play before the screen switches.
+    state.prevExpr = expr;
     requestAnimationFrame(loop);
   }
 
@@ -264,13 +306,13 @@ export async function startGame(mode = 'camera') {
     if (isDemo) {
       state.thresholds = buildThresholds(null); // use literature floors; no calibration
       hideOverlay();
-      setSubtitle('键盘：S 接受 · F 拒绝 · V 呕吐 · 松开 无表情');
+      setSubtitle('Keys: S accept · F refuse · V gag · release = blank');
       state.startTime = performance.now();
       startRound();
       requestAnimationFrame(loop);
       return;
     }
-    showOverlay('<h1>表情喂食</h1><p>正在打开摄像头并加载模型…</p>');
+    showOverlay('<h1>Expression Feeding</h1><p>Opening camera and loading model…</p>');
     const stream = await openCamera();
     el.video.srcObject = stream;
     await el.video.play();
@@ -283,8 +325,8 @@ export async function startGame(mode = 'camera') {
     requestAnimationFrame(loop);
   } catch (err) {
     showOverlay(
-      `<h1>无法启动</h1><p>${err.message || err}</p>` +
-      `<p>请允许摄像头权限，并用支持 WebRTC 的浏览器（桌面 Chrome/Edge）打开。</p>`
+      `<h1>Could not start</h1><p>${err.message || err}</p>` +
+      `<p>Grant camera permission and open this in a WebRTC-capable browser (desktop Chrome/Edge).</p>`
     );
   }
 }

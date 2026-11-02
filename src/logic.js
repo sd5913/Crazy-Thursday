@@ -89,8 +89,8 @@ export function classifyExpression(categories, thresholds) {
 }
 
 // At the spoon's arrival we only care about accept / reject / neutral.
-// A missing face (null categories) resolves to NEUTRAL, which the judge treats
-// as "eat" -- matching the design's "no expression defaults to eating".
+// A missing face (null categories) resolves to NEUTRAL, which the judge does
+// NOT treat as eating -- only an explicit ACCEPT (smile) takes the bite.
 export function intentFromExpression(categories, thresholds) {
   const expr = classifyExpression(categories, thresholds);
   if (expr === EXPRESSIONS.SMILE) return INTENT.ACCEPT;
@@ -100,22 +100,30 @@ export function intentFromExpression(categories, thresholds) {
 
 // Decide the outcome when the spoon reaches the mouth.
 export function judge(item, intent) {
-  const eat = intent !== INTENT.REJECT; // neutral or smile => accept the food
-  if (!eat) {
+  // Eating only happens on an explicit ACCEPT (smile). A frown or no expression
+  // means the patient did not take the bite, so a good food with no expression
+  // is simply declined (no points), while a bad food with no expression is still
+  // eaten -- the player failed to refuse it (just like the old default).
+  if (intent === INTENT.ACCEPT) {
     return item.eatable
-      ? { type: OUTCOME.DECLINED_FOOD, scoreDelta: 0, discomfortDelta: 0 }
-      : { type: OUTCOME.CORRECT_REJECT, scoreDelta: SCORING.CORRECT_POINTS, discomfortDelta: 0 };
+      ? { type: OUTCOME.CORRECT_ACCEPT, scoreDelta: SCORING.CORRECT_POINTS, discomfortDelta: 0 }
+      : { type: OUTCOME.WRONG_EAT, scoreDelta: 0, discomfortDelta: SCORING.WRONG_EAT_DISCOMFORT };
   }
-  if (item.eatable) {
-    return { type: OUTCOME.CORRECT_ACCEPT, scoreDelta: SCORING.CORRECT_POINTS, discomfortDelta: 0 };
+  if (!item.eatable && intent === INTENT.REJECT) {
+    return { type: OUTCOME.CORRECT_REJECT, scoreDelta: SCORING.CORRECT_POINTS, discomfortDelta: 0 };
   }
-  return { type: OUTCOME.WRONG_EAT, scoreDelta: 0, discomfortDelta: SCORING.WRONG_EAT_DISCOMFORT };
+  if (!item.eatable && intent === INTENT.NEUTRAL) {
+    return { type: OUTCOME.WRONG_EAT, scoreDelta: 0, discomfortDelta: SCORING.WRONG_EAT_DISCOMFORT };
+  }
+  // Not eaten: edible refused/skipped, or inedible properly refused.
+  return { type: OUTCOME.DECLINED_FOOD, scoreDelta: 0, discomfortDelta: 0 };
 }
 
-// Feeding speeds up over time by shortening travel time (the serve window in
-// which the player reacts) and the gap between rounds. Both are clamped so the
-// expression still has time to register.
-export function speedForRound(round, opts = {}) {
+// Difficulty is a level that the game raises on a correct play and lowers on a
+// mistake; level 0 is the initial (slowest-difficulty) pace, never slower.
+// Speed comes from shortening the travel time (the serve window in which the
+// player must react); both values are clamped so the expression still registers.
+export function speedForLevel(level, opts = {}) {
   const o = {
     startTravel: 3500,
     travelDecay: 150,
@@ -126,9 +134,10 @@ export function speedForRound(round, opts = {}) {
     ...opts,
   };
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const lv = Math.max(0, level);
   return {
-    travelMs: clamp(o.startTravel - round * o.travelDecay, o.minTravel, o.startTravel),
-    gapMs: clamp(o.startGap - round * o.gapDecay, o.minGap, o.startGap),
+    travelMs: clamp(o.startTravel - lv * o.travelDecay, o.minTravel, o.startTravel),
+    gapMs: clamp(o.startGap - lv * o.gapDecay, o.minGap, o.startGap),
   };
 }
 
@@ -139,18 +148,22 @@ export function applyRescue(currentDiscomfort, success) {
 }
 
 // The starter catalogue: 8 items, 3 edible + 5 not. `emoji` is the spoon prop,
-// `line` is the nurse's line for absurd items (the comedic read).
+// `name` is the label, `line` is the nurse's deadpan bedside manner.
 export const ITEMS = [
-  { id: 'congee', name: '粥', emoji: '🥣', eatable: true, line: '趁热喝。' },
-  { id: 'pudding', name: '布丁', emoji: '🍮', eatable: true, line: '甜品时间。' },
-  { id: 'cake', name: '蛋糕', emoji: '🍰', eatable: true, line: '生日快乐。' },
-  { id: 'mustard', name: '整勺芥末', emoji: '🥄', eatable: false, line: '补点维生素。' },
-  { id: 'lemon', name: '超酸柠檬', emoji: '🍋', eatable: false, line: '清火。' },
-  { id: 'chili', name: '辣椒酱', emoji: '🌶️', eatable: false, line: '开胃。' },
-  { id: 'cactus', name: '仙人掌', emoji: '🌵', eatable: false, line: '今天多吃点蔬菜。' },
-  { id: 'soap', name: '像巧克力的肥皂', emoji: '🧼', eatable: false, line: '新口味巧克力。' },
+  { id: 'congee', name: 'Congee', emoji: '🥣', eatable: true, line: 'Still warm. Probably.' },
+  { id: 'pudding', name: 'Pudding', emoji: '🍮', eatable: true, line: 'Sugar fixes everything. Maybe.' },
+  { id: 'cake', name: 'Cake', emoji: '🍰', eatable: true, line: 'Happy birthday. Whoever you are.' },
+  { id: 'mustard', name: 'A spoonful of mustard', emoji: '🥄', eatable: false, line: 'Some vitamins. Straight.' },
+  { id: 'lemon', name: 'Sour lemon', emoji: '🍋', eatable: false, line: 'Detox. You will cry either way.' },
+  { id: 'chili', name: 'Chili sauce', emoji: '🌶️', eatable: false, line: 'Mild.' },
+  { id: 'cactus', name: 'Cactus', emoji: '🌵', eatable: false, line: 'Eat your vegetables.' },
+  { id: 'soap', name: 'Chocolate-shaped soap', emoji: '🧼', eatable: false, line: 'New chocolate flavor.' },
 ];
 
 export function randomItem(rng = Math.random) {
   return ITEMS[Math.floor(rng() * ITEMS.length)];
 }
+
+// Each item points at its placeholder art (src/assets/food/<id>.svg); the art
+// team replaces the SVG (or repoints `image` to a PNG) without touching logic.
+for (const it of ITEMS) it.image = `assets/food/${it.id}.svg`;

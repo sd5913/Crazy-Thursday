@@ -45,7 +45,7 @@ export function detectFace(video) {
 // Open the local webcam. Resolves with the MediaStream on success.
 export async function openCamera() {
   if (!navigator.mediaDevices?.getUserMedia) {
-    throw new Error('此环境不支持摄像头（getUserMedia 不可用）。');
+    throw new Error('This environment has no camera (getUserMedia unavailable).');
   }
   return navigator.mediaDevices.getUserMedia({
     video: { facingMode: 'user', width: 640, height: 480 },

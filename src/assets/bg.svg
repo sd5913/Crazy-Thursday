@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080">
+  <rect width="1920" height="1080" fill="#162a29"/>
+  <rect width="1920" height="1080" fill="url(#g)" opacity="0.5"/>
+  <defs><radialGradient id="g" cx="50%" cy="18%" r="60%">
+    <stop offset="0%" stop-color="#2c4a44"/><stop offset="100%" stop-color="#162a29" stop-opacity="0"/>
+  </radialGradient></defs>
+  <text x="960" y="545" font-size="46" fill="#3f5f59" text-anchor="middle" font-family="'Courier New', monospace">BACKGROUND placeholder · 1920×1080</text>
+</svg>

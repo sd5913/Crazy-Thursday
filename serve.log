@@ -27,3 +27,97 @@
  HTTP  2026/11/2 00:11:26 ::1 Returned 304 in 1 ms
  HTTP  2026/11/2 00:11:26 ::1 GET /logic.js
  HTTP  2026/11/2 00:11:26 ::1 Returned 304 in 1 ms
+ HTTP  2026/11/2 02:23:26 ::1 GET /
+ HTTP  2026/11/2 02:23:26 ::1 Returned 200 in 25 ms
+ HTTP  2026/11/2 02:23:26 ::1 GET /assets/bg.svg
+ HTTP  2026/11/2 02:23:26 ::1 GET /style.css
+ HTTP  2026/11/2 02:23:26 ::1 GET /assets/hud.svg
+ HTTP  2026/11/2 02:23:26 ::1 GET /assets/food/congee.svg
+ HTTP  2026/11/2 02:23:26 ::1 GET /assets/hint.svg
+ HTTP  2026/11/2 02:23:26 ::1 GET /app.js
+ HTTP  2026/11/2 02:23:26 ::1 Returned 304 in 2 ms
+ HTTP  2026/11/2 02:23:26 ::1 GET /game.js
+ HTTP  2026/11/2 02:23:26 ::1 Returned 200 in 40 ms
+ HTTP  2026/11/2 02:23:26 ::1 Returned 200 in 40 ms
+ HTTP  2026/11/2 02:23:26 ::1 Returned 200 in 38 ms
+ HTTP  2026/11/2 02:23:26 ::1 Returned 200 in 41 ms
+ HTTP  2026/11/2 02:23:26 ::1 Returned 200 in 40 ms
+ HTTP  2026/11/2 02:23:26 ::1 Returned 200 in 48 ms
+ HTTP  2026/11/2 02:23:26 ::1 GET /face.js
+ HTTP  2026/11/2 02:23:26 ::1 GET /logic.js
+ HTTP  2026/11/2 02:23:26 ::1 Returned 304 in 1 ms
+ HTTP  2026/11/2 02:23:26 ::1 Returned 200 in 27 ms
+ HTTP  2026/11/2 02:23:28 ::1 GET /assets/food/soap.svg
+ HTTP  2026/11/2 02:23:28 ::1 Returned 200 in 12 ms
+ HTTP  2026/11/2 02:23:40 ::1 GET /assets/food/cake.svg
+ HTTP  2026/11/2 02:23:40 ::1 Returned 200 in 14 ms
+ HTTP  2026/11/2 02:23:44 ::1 GET /assets/food/chili.svg
+ HTTP  2026/11/2 02:23:44 ::1 Returned 200 in 14 ms
+ HTTP  2026/11/2 02:23:51 ::1 GET /assets/food/congee.svg
+ HTTP  2026/11/2 02:23:51 ::1 Returned 304 in 3 ms
+ HTTP  2026/11/2 02:23:55 ::1 GET /assets/food/cactus.svg
+ HTTP  2026/11/2 02:23:55 ::1 Returned 200 in 12 ms
+ HTTP  2026/11/2 02:23:58 ::1 GET /assets/food/pudding.svg
+ HTTP  2026/11/2 02:23:58 ::1 Returned 200 in 11 ms
+ HTTP  2026/11/2 02:24:02 ::1 GET /assets/food/cake.svg
+ HTTP  2026/11/2 02:24:02 ::1 Returned 304 in 1 ms
+ HTTP  2026/11/2 02:24:05 ::1 GET /assets/food/soap.svg
+ HTTP  2026/11/2 02:24:05 ::1 Returned 304 in 3 ms
+ HTTP  2026/11/2 02:24:08 ::1 GET /assets/food/chili.svg
+ HTTP  2026/11/2 02:24:08 ::1 Returned 304 in 2 ms
+ HTTP  2026/11/2 02:24:11 ::1 GET /assets/food/soap.svg
+ HTTP  2026/11/2 02:24:11 ::1 Returned 304 in 2 ms
+ HTTP  2026/11/2 02:24:14 ::1 GET /assets/food/cake.svg
+ HTTP  2026/11/2 02:24:14 ::1 Returned 304 in 3 ms
+ HTTP  2026/11/2 02:24:20 ::1 GET /assets/food/congee.svg
+ HTTP  2026/11/2 02:24:20 ::1 Returned 304 in 2 ms
+ HTTP  2026/11/2 02:24:22 ::1 GET /assets/food/pudding.svg
+ HTTP  2026/11/2 02:24:22 ::1 Returned 304 in 3 ms
+ HTTP  2026/11/2 02:24:24 ::1 GET /assets/food/mustard.svg
+ HTTP  2026/11/2 02:24:24 ::1 Returned 200 in 13 ms
+ HTTP  2026/11/2 02:24:27 ::1 GET /assets/food/soap.svg
+ HTTP  2026/11/2 02:24:27 ::1 Returned 304 in 4 ms
+ HTTP  2026/11/2 02:24:29 ::1 GET /assets/food/congee.svg
+ HTTP  2026/11/2 02:24:29 ::1 Returned 304 in 3 ms
+ HTTP  2026/11/2 02:24:31 ::1 GET /assets/food/pudding.svg
+ HTTP  2026/11/2 02:24:31 ::1 Returned 304 in 3 ms
+ HTTP  2026/11/2 02:24:37 ::1 GET /assets/food/cactus.svg
+ HTTP  2026/11/2 02:24:37 ::1 Returned 304 in 3 ms
+ HTTP  2026/11/2 02:24:39 ::1 GET /assets/food/lemon.svg
+ HTTP  2026/11/2 02:24:39 ::1 Returned 200 in 11 ms
+ HTTP  2026/11/2 02:24:41 ::1 GET /assets/food/congee.svg
+ HTTP  2026/11/2 02:24:41 ::1 Returned 304 in 2 ms
+ HTTP  2026/11/2 02:24:43 ::1 GET /assets/food/soap.svg
+ HTTP  2026/11/2 02:24:43 ::1 Returned 304 in 2 ms
+ HTTP  2026/11/2 02:24:46 ::1 GET /assets/food/congee.svg
+ HTTP  2026/11/2 02:24:46 ::1 Returned 304 in 3 ms
+ HTTP  2026/11/2 02:24:48 ::1 GET /assets/food/pudding.svg
+ HTTP  2026/11/2 02:24:48 ::1 Returned 304 in 3 ms
+ HTTP  2026/11/2 02:24:50 ::1 GET /assets/food/soap.svg
+ HTTP  2026/11/2 02:24:50 ::1 Returned 304 in 3 ms
+ HTTP  2026/11/2 02:24:53 ::1 GET /assets/food/congee.svg
+ HTTP  2026/11/2 02:24:53 ::1 Returned 304 in 2 ms
+ HTTP  2026/11/2 02:24:55 ::1 GET /assets/food/cake.svg
+ HTTP  2026/11/2 02:24:55 ::1 Returned 304 in 2 ms
+ HTTP  2026/11/2 02:24:58 ::1 GET /assets/food/mustard.svg
+ HTTP  2026/11/2 02:24:58 ::1 Returned 304 in 3 ms
+ HTTP  2026/11/2 02:25:04 ::1 GET /
+ HTTP  2026/11/2 02:25:04 ::1 Returned 304 in 1 ms
+ HTTP  2026/11/2 02:25:04 ::1 GET /style.css
+ HTTP  2026/11/2 02:25:04 ::1 GET /assets/bg.svg
+ HTTP  2026/11/2 02:25:04 ::1 Returned 304 in 2 ms
+ HTTP  2026/11/2 02:25:04 ::1 GET /assets/hud.svg
+ HTTP  2026/11/2 02:25:04 ::1 GET /app.js
+ HTTP  2026/11/2 02:25:04 ::1 GET /assets/food/congee.svg
+ HTTP  2026/11/2 02:25:04 ::1 GET /assets/hint.svg
+ HTTP  2026/11/2 02:25:04 ::1 Returned 304 in 4 ms
+ HTTP  2026/11/2 02:25:04 ::1 Returned 304 in 3 ms
+ HTTP  2026/11/2 02:25:04 ::1 Returned 304 in 3 ms
+ HTTP  2026/11/2 02:25:04 ::1 Returned 304 in 2 ms
+ HTTP  2026/11/2 02:25:04 ::1 Returned 304 in 3 ms
+ HTTP  2026/11/2 02:25:04 ::1 GET /game.js
+ HTTP  2026/11/2 02:25:04 ::1 Returned 304 in 1 ms
+ HTTP  2026/11/2 02:25:04 ::1 GET /face.js
+ HTTP  2026/11/2 02:25:04 ::1 GET /logic.js
+ HTTP  2026/11/2 02:25:04 ::1 Returned 304 in 2 ms
+ HTTP  2026/11/2 02:25:04 ::1 Returned 304 in 1 ms

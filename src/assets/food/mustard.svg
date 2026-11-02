@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+    <rect width="200" height="200" rx="28" fill="#1d3431" stroke="#f3b66c" stroke-width="4"/>
+    <text x="100" y="98" font-size="76" text-anchor="middle">🥄</text>
+    <text x="100" y="152" font-size="22" fill="#f5f0df" text-anchor="middle" font-family="'Courier New', monospace">A spoonful of mustard</text>
+  </svg>

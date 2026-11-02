@@ -1,4 +1,6 @@
-import { cp, mkdir, rm } from 'node:fs/promises';
-await rm('www', { recursive: true, force: true });
-await mkdir('www', { recursive: true });
+import { cp } from 'node:fs/promises';
+// Copy src/ over www/ in place. We intentionally do NOT delete www/ first:
+// the environment's safe-delete shim blocks fs.rm on generated dirs, and a
+// plain recursive copy already overwrites changed files and adds new ones.
 await cp('src', 'www', { recursive: true });
+console.log('Built www/ from src/');

@@ -1,10 +1,18 @@
 <!doctype html>
-<html lang="zh"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#162a29"><title>表情喂食｜Crazy Thursday</title><link rel="stylesheet" href="style.css"></head>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#162a29"><title>Expression Feeding · Crazy Thursday</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"></head>
 <body>
 <main class="stage">
+  <img id="bg" class="bg" src="assets/bg.jpg" alt="background">
+
   <video id="cam" autoplay playsinline muted></video>
 
   <div class="hud">
+    <img class="hud-bg" src="assets/hud.svg" alt="">
+    <div class="game-title">Expression Feeding</div>
     <div class="score">SCORE <span id="score">0</span></div>
     <div class="discomfort">
       <span>DISCOMFORT</span>
@@ -12,21 +20,22 @@
     </div>
   </div>
 
+  <div id="combo" class="combo" hidden>combo ×0</div>
+
   <div class="scene">
-    <div class="nurse" aria-hidden="true">🧑‍⚕️</div>
-    <div class="spoon" id="spoon"><div class="item" id="item">🥄</div></div>
-    <div class="patient" id="patient" aria-hidden="true">🛏️</div>
+    <div class="spoon" id="spoon"><img class="spoon-img" src="assets/spoon.png" alt=""><img class="item" id="item" src="assets/food/congee.svg" alt="food"></div>
   </div>
 
-  <div id="exprBadge" class="badge" data-expr="none">未检测到人脸</div>
-  <div id="subtitle" class="subtitle">准备中…</div>
+  <div id="exprBadge" class="badge" data-expr="none">no face detected</div>
+  <img id="hintBubble" class="hint-bubble" src="assets/hint.svg" alt="">
+  <div id="subtitle" class="subtitle">Loading…</div>
 
   <div id="overlay" class="overlay">
     <div class="panel" id="panel">
-      <h1>表情喂食</h1>
-      <p>用微笑接受、撇嘴拒绝、张嘴伸舌呕吐。相机只在本地处理，不上传。</p>
-      <button id="startBtn" type="button">开始并校准（需摄像头）</button>
-      <button id="demoBtn" type="button">键盘演示（无需摄像头）</button>
+      <h1>Expression Feeding</h1>
+      <p>Smile to accept, frown to refuse, gag to purge. The camera is processed locally and never leaves your device.</p>
+      <button id="startBtn" type="button">Start &amp; Calibrate (needs camera)</button>
+      <button id="demoBtn" type="button">Keyboard Demo (no camera)</button>
     </div>
   </div>
 </main>

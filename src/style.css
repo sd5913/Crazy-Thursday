@@ -1,9 +1,16 @@
 :root {
-  font-family: Georgia, "PingFang SC", "Microsoft YaHei", serif;
+  font-family: 'VT323', 'Courier New', monospace;
   color: #f5f0df;
   --bg: #162a29;
   --accent: #f3b66c;
   --danger: #e0553f;
+  /* Pixel typefaces. --pixel-display is the chunky arcade font (title, badge);
+     --pixel-body is the readable pixel font for longer text. Both come from the
+     Google Fonts CDN linked in index.html. To bundle your own, @font-face them
+     here and drop the CDN link. */
+  --pixel-display: 'Press Start 2P', 'Courier New', monospace;
+  --pixel-body: 'VT323', 'Courier New', monospace;
+  --ui-font: var(--pixel-body);
   background: var(--bg);
 }
 * { box-sizing: border-box; }
@@ -16,6 +23,16 @@ body { margin: 0; }
   background: radial-gradient(circle at 50% 18%, #2c4a44, transparent 55%), var(--bg);
 }
 
+/* Background placeholder image slot (art replaces assets/bg.svg). */
+.bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+
 /* Camera preview sits behind everything, mirrored, faint, so the player can see
    their own face act as the patient. Detection still runs on this <video>. */
 #cam {
@@ -26,7 +43,7 @@ body { margin: 0; }
   object-fit: cover;
   transform: scaleX(-1);
   opacity: 0.32;
-  z-index: 0;
+  z-index: 1;
 }
 
 .hud {
@@ -39,15 +56,26 @@ body { margin: 0; }
   z-index: 3;
   pointer-events: none;
 }
+/* Status-bar placeholder behind the score / discomfort readouts. */
+.hud-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.85;
+  z-index: -1;
+  border-radius: 0 0 1rem 1rem;
+}
 .score {
-  font: 700 1.1rem monospace;
-  letter-spacing: .1em;
+  font: 700 1.5rem var(--ui-font);
+  letter-spacing: .08em;
   background: rgba(0,0,0,.35);
   padding: .4rem .7rem;
   border-radius: .4rem;
 }
 .score span { color: var(--accent); }
-.discomfort { text-align: right; font: 700 .8rem monospace; letter-spacing: .15em; }
+.discomfort { text-align: right; font: 700 1.2rem var(--ui-font); letter-spacing: .1em; }
 .discomfort .bar {
   margin-top: .3rem;
   width: 42vw; max-width: 320px; height: 14px;
@@ -66,34 +94,33 @@ body { margin: 0; }
   z-index: 2;
   pointer-events: none;
 }
-.nurse {
-  position: absolute;
-  top: 6%; left: 50%;
-  transform: translateX(-50%);
-  font-size: clamp(3rem, 12vw, 6rem);
-  filter: drop-shadow(0 4px 6px rgba(0,0,0,.4));
-}
-.patient {
-  position: absolute;
-  bottom: -2%; left: 50%;
-  transform: translateX(-50%);
-  font-size: clamp(5rem, 26vw, 12rem);
-  filter: drop-shadow(0 6px 10px rgba(0,0,0,.5));
-}
 .spoon {
   position: absolute;
-  top: 8%; left: 50%;
-  transform: translateX(-50%);
+  top: 50%; left: 50%;
+  width: min(46vw, 480px);
+  /* Anchor the scale on the spoon bowl so the food stays pinned to the
+     screen centre while the whole spoon+food group grows (2 -> 4). */
+  transform-origin: 74% 70%;
+  transform: translate(-74%, -70%) scale(2);
   z-index: 2;
+  pointer-events: none;
   transition: opacity .2s ease;
 }
+.spoon-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 6px 14px rgba(0,0,0,.45));
+}
 .spoon .item {
-  font-size: clamp(2.4rem, 9vw, 4rem);
+  position: absolute;
+  left: 61%; top: 40%;
+  width: 26%;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
   background: rgba(243,182,108,.18);
   border: 2px solid var(--accent);
   border-radius: 50%;
-  width: 1.8em; height: 1.8em;
-  display: grid; place-items: center;
   box-shadow: 0 6px 14px rgba(0,0,0,.45);
 }
 
@@ -101,7 +128,7 @@ body { margin: 0; }
   position: absolute;
   left: 1.4rem; bottom: 1.4rem;
   z-index: 3;
-  font: 700 1rem monospace;
+  font: 700 0.9rem var(--pixel-display);
   padding: .5rem .8rem;
   border-radius: .5rem;
   background: rgba(0,0,0,.45);
@@ -114,14 +141,66 @@ body { margin: 0; }
 
 .subtitle {
   position: absolute;
-  left: 50%; bottom: 2rem;
+  left: 50%; bottom: 1.4rem;
   transform: translateX(-50%);
   z-index: 3;
   width: min(90vw, 640px);
+  aspect-ratio: 640 / 120;
+  display: grid;
+  place-items: center;
   text-align: center;
-  font-size: 1.4rem;
+  font-size: clamp(1.8rem, 5.5vw, 3rem);
   font-weight: 700;
+  font-family: var(--pixel-body);
   text-shadow: 0 2px 6px rgba(0,0,0,.7);
+}
+/* Hint bubble placeholder sits behind the subtitle text. Keep the same box
+   (position + aspect ratio) as .subtitle so the art's real bubble aligns. */
+.hint-bubble {
+  position: absolute;
+  left: 50%; bottom: 1.4rem;
+  transform: translateX(-50%);
+  width: min(90vw, 640px);
+  aspect-ratio: 640 / 120;
+  z-index: 2;
+  pointer-events: none;
+}
+/* Top game title, rendered as crisp HTML over the status-bar background. */
+.game-title {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--pixel-display);
+  font-weight: 800;
+  font-size: clamp(0.85rem, 2.4vw, 1.4rem);
+  letter-spacing: .08em;
+  color: #f5f0df;
+  text-shadow: 0 2px 8px rgba(0,0,0,.6);
+  pointer-events: none;
+  z-index: 2;
+}
+/* Combo streak, parked at the top-right corner of the bottom subtitle bubble,
+   tilted to the right. Position uses the same box as .hint-bubble / .subtitle
+   (bottom: 1.4rem, width min(90vw,640px), 640/120 ratio). */
+.combo {
+  position: absolute;
+  bottom: calc(1.4rem + min(90vw, 640px) * 0.1875 - 1rem);
+  right: calc(50% - min(90vw, 640px) / 2 + 0.8rem);
+  transform: rotate(10deg);
+  font-family: var(--pixel-display);
+  font-weight: 800;
+  font-size: clamp(1rem, 4vw, 1.9rem);
+  letter-spacing: .06em;
+  color: var(--accent);
+  text-shadow: 0 2px 8px rgba(0,0,0,.6);
+  pointer-events: none;
+  z-index: 3;
+}
+.combo[hidden] { display: none; }
+.combo.pop { animation: comboPop .25s ease; }
+@keyframes comboPop {
+  0% { transform: rotate(10deg) scale(1.45); }
+  100% { transform: rotate(10deg) scale(1); }
 }
 
 .overlay {
@@ -143,15 +222,15 @@ body { margin: 0; }
   text-align: center;
   box-shadow: 0 20px 50px rgba(0,0,0,.5);
 }
-.panel h1 { margin: 0 0 1rem; font-size: 2rem; color: var(--accent); }
-.panel p { line-height: 1.6; opacity: .9; }
+.panel h1 { margin: 0 0 1rem; font-family: var(--pixel-body); font-weight: 400; font-size: clamp(2.4rem, 8vw, 3.6rem); letter-spacing: .02em; color: var(--accent); text-shadow: 0 2px 10px rgba(0,0,0,.4); }
+.panel p { font-size: 1.6rem; line-height: 1.35; opacity: .9; }
 .panel button, #startBtn {
   margin-top: 1.4rem;
   border: 0;
   background: var(--accent);
   color: #162a29;
   padding: 1rem 1.4rem;
-  font: 700 1rem monospace;
+  font: 700 1.3rem var(--pixel-body);
   cursor: pointer;
   border-radius: .5rem;
 }

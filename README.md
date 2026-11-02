@@ -85,3 +85,38 @@ own destination, tokens and commands.
 ## Project Management
 
 [View the Crazy Thursday Team Project Board](https://github.com/orgs/sd5913/projects/12/views/1)
+
+## 美术资源接入（表情喂食小游戏）
+
+UI 里的背景、食物、状态栏、提示都是真正的 `<img>` 插槽，目前用带标注的 SVG
+占位图填充，美术直接替换即可，**逻辑代码不用改**。
+
+所有图片放在 `src/assets/`（构建时原样拷到 `www/assets/`）：
+
+| 插槽 | 文件 | 在代码里的位置 |
+| --- | --- | --- |
+| 背景图 | `src/assets/bg.svg` | `src/index.html` 里的 `<img id="bg" src="assets/bg.svg">` |
+| 状态栏 | `src/assets/hud.svg` | 顶层 HUD 背景，位于分数 / 难受值之后 |
+| 提示气泡 | `src/assets/hint.svg` | 底部字幕背后的气泡 |
+| 食物 ×8 | `src/assets/food/<id>.svg` | 每轮由 `src/logic.js` 的 `it.image = 'assets/food/${it.id}.svg'` 设定 |
+
+### 怎么换图
+
+- **最简单**：把同名文件覆盖掉（例如用 `bg.png` 替换 `bg.svg` 时，同时把
+  `index.html` 里的 `src="assets/bg.svg"` 改成 `src="assets/bg.png"`）。
+- **改路径**：食物图改 `src/logic.js` 底部那一行；背景/状态栏/提示改
+  `src/index.html` 里对应的 `src` 属性。
+
+### 背景图要换格式吗？
+
+**不需要。** 现在用 SVG 只是因为占位图好生成、能写标注。浏览器原生支持
+SVG / PNG / JPG / WebP 等任意常见格式，换成位图直接改 `src` 指向新文件即可，
+没有“必须 SVG”的限制。尺寸建议 1920×1080 起步，CSS 用 `object-fit: cover`
+自适应铺满。
+
+### 重新生成占位图
+
+```bash
+node scripts/gen-placeholders.mjs   # 写 src/assets/* 占位图
+npm run build                       # src/ -> www/（或手动把 src 拷到 www）
+```

@@ -6,7 +6,7 @@ import {
   intentFromExpression,
   judge,
   buildThresholds,
-  speedForRound,
+  speedForLevel,
   applyRescue,
   randomItem,
   OUTCOME,
@@ -45,7 +45,7 @@ test('classifyExpression maps each pose', () => {
   assert.equal(classifyExpression(null, TH), EXPRESSIONS.NEUTRAL);
 });
 
-test('intent: smile accepts, frown rejects, neutral/missing eats', () => {
+test('intent: smile accepts, frown rejects, neutral/missing stays neutral', () => {
   assert.equal(intentFromExpression(cats({ mouthSmileLeft: 0.9, mouthSmileRight: 0.9 }), TH), INTENT.ACCEPT);
   assert.equal(intentFromExpression(cats({ mouthFrownLeft: 0.8, mouthFrownRight: 0.8 }), TH), INTENT.REJECT);
   assert.equal(intentFromExpression(cats({}), TH), INTENT.NEUTRAL);
@@ -59,9 +59,10 @@ test('judge: rewards correct plays, penalises wrong eats, no penalty for decline
   assert.equal(judge(cactus, INTENT.REJECT).type, OUTCOME.CORRECT_REJECT);
   assert.equal(judge(cake, INTENT.REJECT).type, OUTCOME.DECLINED_FOOD);
   assert.equal(judge(cactus, INTENT.ACCEPT).type, OUTCOME.WRONG_EAT);
-  // Neutral (no face) defaults to eating:
+  // A bad food with no expression is still eaten (failed to refuse it):
   assert.equal(judge(cactus, INTENT.NEUTRAL).type, OUTCOME.WRONG_EAT);
-  assert.equal(judge(cake, INTENT.NEUTRAL).type, OUTCOME.CORRECT_ACCEPT);
+  // A good food with no expression is NOT eaten -- just declined, no points:
+  assert.equal(judge(cake, INTENT.NEUTRAL).type, OUTCOME.DECLINED_FOOD);
 });
 
 test('judge scoring matches the design', () => {
@@ -71,9 +72,9 @@ test('judge scoring matches the design', () => {
   assert.equal(judge({ eatable: true }, INTENT.REJECT).discomfortDelta, 0);
 });
 
-test('speedForRound accelerates but clamps to a fair minimum', () => {
-  const early = speedForRound(0);
-  const late = speedForRound(50);
+test('speedForLevel accelerates with level but clamps to a fair minimum', () => {
+  const early = speedForLevel(0);
+  const late = speedForLevel(50);
   assert.ok(late.travelMs < early.travelMs);
   assert.ok(late.gapMs < early.gapMs);
   assert.ok(late.travelMs >= 1200); // minTravel floor
