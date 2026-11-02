@@ -6,6 +6,26 @@ button and counter are deliberately small enough to trace and change.
 
 ## Run and change
 
+### One-click web preview (macOS / Windows)
+
+Install Node 24 LTS, then double-click the launcher in `scripts/`:
+
+- macOS: `scripts/start-mac.command`
+- Windows: `scripts/start-win.bat`
+
+The launcher builds `www/`, starts a local server, and opens
+`http://localhost:8000/`. Keep its terminal window open; press Ctrl+C to stop.
+The web preview needs only Node (no Python, Android SDK or `npm ci`). Do not
+open the HTML with `file://`: browser modules and camera access need a local
+HTTP origin. Camera mode requires permission and internet access to download
+the MediaPipe model; **Demo** mode uses S / F / V without a camera.
+
+If macOS reports a permission error, run `chmod +x scripts/start-mac.command`
+from the repository root. If port 8000 is occupied, stop the existing server
+or set `PORT` to another port. For terminal use, run `npm start`.
+
+### Checks and Android dependencies
+
 Install Node 24, then from the repository root:
 
 ```bash
