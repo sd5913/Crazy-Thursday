@@ -17,6 +17,10 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
+        env:
+          # CI only runs node --test / build.mjs; the Electron runtime binary is
+          # never used here. Skipping its ~100 MB download avoids flaky 504s.
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
       - run: npm test
       - run: npm run build
       - uses: actions/upload-artifact@v7
@@ -41,6 +45,9 @@ jobs:
           packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
           log-accepted-android-sdk-licenses: 'false'
       - run: npm ci
+        env:
+          # Android build uses the Capacitor CLI, not Electron.
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
       - run: npm run android:sync
       - run: ./gradlew assembleDebug
         working-directory: android

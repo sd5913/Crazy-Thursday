@@ -4,10 +4,11 @@
   --bg: #162a29;
   --accent: #f3b66c;
   --danger: #e0553f;
-  /* Pixel typefaces. --pixel-display is the chunky arcade font (title, badge);
-     --pixel-body is the readable pixel font for longer text. Both come from the
-     Google Fonts CDN linked in index.html. To bundle your own, @font-face them
-     here and drop the CDN link. */
+  /* Pixel typefaces across the WHOLE app. --pixel-display is the chunky arcade
+     font for short labels (title, badge, combo, share-card heading);
+     --pixel-body is the readable pixel font for longer text (HUD, subtitle,
+     panel, share-card stats). Both load from the Google Fonts CDN in index.html;
+     'Courier New' is only an offline fallback, never the intended look. */
   --pixel-display: 'Press Start 2P', 'Courier New', monospace;
   --pixel-body: 'VT323', 'Courier New', monospace;
   --ui-font: var(--pixel-body);
@@ -128,11 +129,29 @@ body { margin: 0; }
   position: absolute;
   left: 1.4rem; bottom: 1.4rem;
   z-index: 3;
-  font: 700 0.9rem var(--pixel-display);
-  padding: .5rem .8rem;
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+  font-family: var(--pixel-display);
+  font-weight: 700;
+  line-height: 1.15;
+  padding: .7rem 1rem;
   border-radius: .5rem;
   background: rgba(0,0,0,.45);
   border: 2px solid #6b8e87;
+}
+/* Two-line badge: enlarged primary label over a smaller note. */
+.badge-main {
+  font-size: clamp(1.15rem, 2.8vw, 1.85rem);
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+.badge-sub {
+  font-family: var(--pixel-body);
+  font-size: clamp(1rem, 2.2vw, 1.5rem);
+  letter-spacing: .05em;
+  opacity: .85;
+  white-space: nowrap;
 }
 .badge[data-expr="smile"] { border-color: #7bd88f; color: #bdf3c8; }
 .badge[data-expr="frown"] { border-color: #e0a93f; color: #f6d79a; }

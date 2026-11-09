@@ -32,13 +32,14 @@ const NURSE_LINES = [
   'You are doing so well today.',
 ];
 
+// Badge renders two lines: a big primary label + a small secondary note.
 const BADGE_TEXT = {
-  [EXPRESSIONS.SMILE]: 'SMILE · accepting',
-  [EXPRESSIONS.FROWN]: 'FROWN · refusing',
-  [EXPRESSIONS.VOMIT]: 'GAG · vomiting',
-  [EXPRESSIONS.BLINK]: 'EYES SHUT · defending',
-  [EXPRESSIONS.NEUTRAL]: 'blank stare',
-  none: 'no face detected',
+  [EXPRESSIONS.SMILE]: ['SMILE', 'accepting'],
+  [EXPRESSIONS.FROWN]: ['FROWN', 'refusing'],
+  [EXPRESSIONS.VOMIT]: ['GAG', 'vomiting'],
+  [EXPRESSIONS.BLINK]: ['LIDDED', 'defending'],
+  [EXPRESSIONS.NEUTRAL]: ['RELAX', 'neutral'],
+  none: ['NO FACE', 'not detected'],
 };
 
 export async function startGame(mode = 'camera', opts = {}) {
@@ -80,8 +81,18 @@ export async function startGame(mode = 'camera', opts = {}) {
   const setScore = () => (el.score.textContent = String(state.score));
   const setDiscomfort = () =>
     (el.discomfortFill.style.width = `${(state.discomfort / SCORING.MAX_DISCOMFORT) * 100}%`);
+  let shownExpr = null;
   const setBadge = (expr) => {
-    el.badge.textContent = BADGE_TEXT[expr] ?? BADGE_TEXT.none;
+    if (expr === shownExpr) return; // rebuild only when the pose changes
+    shownExpr = expr;
+    const [main, sub] = BADGE_TEXT[expr] ?? BADGE_TEXT.none;
+    const top = document.createElement('span');
+    top.className = 'badge-main';
+    top.textContent = main;
+    const bottom = document.createElement('span');
+    bottom.className = 'badge-sub';
+    bottom.textContent = sub;
+    el.badge.replaceChildren(top, bottom);
     el.badge.dataset.expr = expr;
   };
   const setSubtitle = (text) => (el.subtitle.textContent = text);
@@ -172,7 +183,7 @@ export async function startGame(mode = 'camera', opts = {}) {
       { key: 'smile', title: 'Calibration 2/5 · Smile', hint: 'The face you make for food you like. Click to sample.' },
       { key: 'frown', title: 'Calibration 3/5 · Frown', hint: 'The face you make for regret. Click to sample.' },
       { key: 'vomit', title: 'Calibration 4/5 · Gag', hint: 'The face you make for actual vomit. Click to sample.' },
-      { key: 'blink', title: 'Calibration 5/5 · Eyes shut', hint: 'Close both eyes and hold. Click to sample.' },
+      { key: 'blink', title: 'Calibration 5/5 · Lidded', hint: 'Close both eyes and hold. Click to sample.' },
     ];
     for (const step of steps) {
       await new Promise((done) => {
@@ -338,8 +349,8 @@ export async function startGame(mode = 'camera', opts = {}) {
       ctx.fillStyle = 'rgba(10,20,20,0.55)';
       ctx.fillRect(0, 0, W, H);
     }
-    // Title + subtitle use the game's pixel typefaces so the card matches the
-    // on-screen UI (Press Start 2P for the title, VT323 for body text).
+    // Same pixel typefaces as the on-screen UI: Press Start 2P for the
+    // heading, VT323 for the rest of the card.
     ctx.textAlign = 'center';
     ctx.fillStyle = '#f3b66c';
     ctx.font = '700 34px "Press Start 2P", monospace';
@@ -436,7 +447,7 @@ export async function startGame(mode = 'camera', opts = {}) {
     if (isDemo) {
       state.thresholds = buildThresholds(null); // use literature floors; no calibration
       hideOverlay();
-      setSubtitle('Keys: S accept · F refuse · V gag · B defend(eyes shut) · release = blank');
+      setSubtitle('Keys: S accept · F refuse · V gag · B defend(lidded) · release = blank');
       state.startTime = performance.now();
       startRound();
       requestAnimationFrame(loop);

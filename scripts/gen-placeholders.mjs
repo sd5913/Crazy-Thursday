@@ -18,7 +18,7 @@ const bg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080">
   <defs><radialGradient id="g" cx="50%" cy="18%" r="60%">
     <stop offset="0%" stop-color="#2c4a44"/><stop offset="100%" stop-color="#162a29" stop-opacity="0"/>
   </radialGradient></defs>
-  <text x="960" y="545" font-size="46" fill="#3f5f59" text-anchor="middle" font-family="'Courier New', monospace">BACKGROUND placeholder · 1920×1080</text>
+  <text x="960" y="545" font-size="46" fill="#3f5f59" text-anchor="middle" font-family="'VT323', 'Courier New', monospace">BACKGROUND placeholder · 1920×1080</text>
 </svg>`;
 writeFileSync(join(assets, 'bg.svg'), bg);
 
@@ -36,7 +36,7 @@ for (const it of ITEMS) {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
     <rect width="200" height="200" rx="28" fill="#1d3431" stroke="#f3b66c" stroke-width="4"/>
     <text x="100" y="98" font-size="76" text-anchor="middle">${esc(it.emoji)}</text>
-    <text x="100" y="152" font-size="22" fill="#f5f0df" text-anchor="middle" font-family="'Courier New', monospace">${esc(it.name)}</text>
+    <text x="100" y="152" font-size="22" fill="#f5f0df" text-anchor="middle" font-family="'VT323', 'Courier New', monospace">${esc(it.name)}</text>
   </svg>`;
   writeFileSync(join(assets, 'food', `${it.id}.svg`), svg);
 }

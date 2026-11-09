@@ -13,6 +13,9 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
+        env:
+          # Static web deploy needs no Electron runtime binary.
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
       - run: npm test && npm run build
       - run: npx --yes wrangler@4 deploy --assets ./www --name "$WORKER_NAME"
         env:
