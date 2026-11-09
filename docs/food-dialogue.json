@@ -1,0 +1,14 @@
+[
+  {"id":"congee","file":"01-congee.png","name":"Congee","name_zh":"粥","edible":true,"line":"Still warm. Unlike our bedside manner."},
+  {"id":"pudding","file":"02-caramel-pudding.png","name":"Caramel pudding","name_zh":"焦糖布丁","edible":true,"line":"Sugar fixes everything. Maybe."},
+  {"id":"broccoli","file":"03-broccoli.png","name":"Broccoli","name_zh":"西兰花","edible":true,"line":"The only green thing here that passed inspection."},
+  {"id":"jelly","file":"04-strawberry-jelly.png","name":"Strawberry jelly","name_zh":"草莓果冻","edible":true,"line":"It wobbles. Just like our standards."},
+  {"id":"cactus","file":"05-cactus.png","name":"Cactus","name_zh":"仙人掌","edible":false,"line":"Eat your vegetables. Complaints may be slightly painful."},
+  {"id":"sponge","file":"06-kitchen-sponge.png","name":"Kitchen sponge","name_zh":"洗碗海绵","edible":false,"line":"Sponge cake. The cake is on back order."},
+  {"id":"brick","file":"07-toy-brick.png","name":"Toy brick","name_zh":"玩具积木","edible":false,"line":"A building block of a balanced diet."},
+  {"id":"scrubber","file":"08-steel-scrubber.png","name":"Steel scrubber","name_zh":"钢丝球","edible":false,"line":"Extra iron. We skipped the middleman."},
+  {"id":"potato","file":"09-roast-potato.png","name":"Roast potato","name_zh":"烤土豆","edible":true,"line":"Golden on the outside. No further questions."},
+  {"id":"dumpling","file":"10-dumpling.png","name":"Steamed dumpling","name_zh":"蒸包","edible":true,"line":"A little mystery, neatly wrapped."},
+  {"id":"pasta","file":"11-tomato-pasta.png","name":"Tomato pasta","name_zh":"番茄意面","edible":true,"line":"Red sauce. Let's leave it at that."},
+  {"id":"pumpkin","file":"12-pumpkin-puree.png","name":"Pumpkin puree","name_zh":"南瓜泥","edible":true,"line":"Pre-mashed. We like to keep your expectations soft."}
+]

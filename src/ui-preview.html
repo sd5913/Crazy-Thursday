@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#303b33"><title>Crazy Thursday · Pixel UI Preview</title>
+  <link rel="stylesheet" href="ui-preview.css"><link rel="stylesheet" href="ui-redesign.css">
+</head>
+<body>
+<main id="app" class="app" data-screen="menu">
+  <img class="ward" src="assets/bg.jpg" alt="A nurse holding a spoon in a hospital ward, seen from the patient's bed">
+  <div class="shade" aria-hidden="true"></div>
+  <header class="masthead"><a class="wordmark" href="ui-preview.html">CT<span>＋</span></a><span>ST. THURSDAY HOSPITAL / WARD 04</span><button id="motion" class="small-button" aria-pressed="false">MOTION: ON</button></header>
+  <nav class="corner-tools" aria-label="Game settings"><button id="settingsButton" aria-label="Settings">⚙</button><button id="soundButton" aria-label="Enable interface sounds" aria-pressed="false"><svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path fill="currentColor" d="M3 9h4l5-5v16l-5-5H3z"/><path class="sound-waves" fill="none" stroke="currentColor" stroke-width="2" d="M15 8q5 4 0 8m3-11q8 7 0 14"/></svg></button></nav>
+  <section id="menu" class="screen menu">
+    <div class="eyebrow"><span class="live-dot"></span> YOUR LUNCH IS READY.</div>
+    <h1>CRAZY<br><span>THURSDAY</span><b>＋</b></h1>
+    <p class="tagline">A spoonful of care.<br>A questionable standard of care.</p>
+    <nav class="menu-buttons" aria-label="Main menu">
+      <button class="primary" data-action="prepare"><span>01</span> BEGIN FEEDING <i>→</i></button>
+      <button data-action="instructions"><span>02</span> PATIENT HANDBOOK <i>＋</i></button>
+      <button data-action="credits"><span>03</span> STAFF RECORDS <i>＋</i></button>
+    </nav>
+    <p class="menu-note">EXPRESSION FEEDING EXPERIMENT<br>PLEASE COOPERATE. IT LOOKS BETTER ON THE CHART.</p>
+  </section>
+  <aside id="menuQuote" class="nurse-note"><span>NURSE / ON DUTY</span><p>“Eat your vegetables.”</p><small>YES. THAT INCLUDES THE CACTUS.</small></aside>
+  <section id="prepare" class="screen centered" hidden>
+    <div class="paper preparation"><div class="paper-head">PATIENT INTAKE <span>FORM 01 / 04</span></div><div class="paper-content">
+      <p class="eyebrow">BEFORE WE BEGIN</p><h2>A face only a nurse<br>could tolerate.</h2><p>This UI preview uses keyboard controls. Try the complete feeding loop without a camera.</p>
+      <div class="action-grid"><div><b class="face-icon">▰</b><kbd>S</kbd><strong>ACCEPT</strong><small>Take the food</small></div><div><b class="face-icon">━</b><kbd>F</kbd><strong>REFUSE</strong><small>Skip strange objects</small></div><div><b class="face-icon tongue">▰</b><kbd>V</kbd><strong>RESCUE</strong><small>After a wrong bite</small></div></div>
+      <p class="notice">Hold S or F until the spoon arrives. Press V after the rescue alert appears. No action on a strange item causes a wrong bite.</p>
+      <div class="button-row"><button data-action="menu">← BACK</button><button class="primary" data-action="play">I'M READY →</button></div>
+      <a class="legacy-link" href="index.html">Open existing camera version ↗</a>
+    </div></div>
+  </section>
+    <aside class="camera-window pixel-panel" aria-label="Patient camera and expression monitor" hidden>
+      <div class="window-title"><span>＋ PATIENT MONITOR</span><span id="cameraState">OFFLINE</span></div>
+      <div class="camera-picture"><video id="patientCamera" autoplay playsinline muted></video><div id="cameraPlaceholder"><span class="camera-face">＋_＋</span><small>YOUR FACE GOES HERE</small></div><span class="camera-corner">CAM 04 / MIRRORED</span></div>
+      <div class="camera-readout"><span class="label">DETECTED EXPRESSION</span><strong id="faceValue">CAMERA OFF</strong><small id="faceDetail">Camera display only · keyboard controls</small></div>
+      <button id="cameraToggle" type="button">ENABLE CAMERA</button>
+      <div class="hud-right"><div class="meter-title"><span>NAUSEA</span><strong id="nauseaValue">0 / 100</strong></div><div class="meter"><div id="nauseaFill"></div></div></div>
+    </aside>
+  <section id="play" class="screen gameplay" hidden>
+    <div class="hud-left pixel-panel"><span class="label">PATIENT NO. 004</span><div class="score-line"><strong id="scoreValue">000</strong><span>PTS</span></div><div class="mini-stats"><span id="elapsed">00:00</span><span id="round">BITE 01</span></div></div>
+    <button id="pauseButton" class="pause-button" aria-label="Pause game">Ⅱ</button>
+    <div class="bite-ticket"><span id="phaseLabel">NEXT BITE</span><strong id="itemName">CONGEE</strong><div class="bite-track"><i id="biteFill"></i></div><span id="biteTime">3.5s</span></div>
+    <div id="prop" class="prop"><div class="food-orbit"><img id="foodImage" src="assets/food/congee.svg" alt=""></div><span>HOSPITAL SPECIAL</span></div>
+    <div id="rescue" class="rescue paper" role="alert" hidden><div class="paper-head">! EMERGENCY RECOVERY <span>FEEDING PAUSED</span></div><div class="paper-content"><span class="rescue-symbol">!</span><h2>SPIT IT OUT.</h2><p>A little late for a second opinion.</p><div class="rescue-time"><span>TIME LEFT</span><strong id="rescueTime">2.5s</strong></div><div class="meter"><div id="rescueFill"></div></div><p class="rescue-instruction">PRESS <kbd>V</kbd> TO RESCUE</p></div></div>
+    <div class="expression pixel-panel"><span class="label">CURRENT INPUT</span><strong id="inputValue">— WAITING</strong><small>HOLD S: ACCEPT / F: REFUSE</small></div>
+    <div class="dialogue pixel-panel"><span class="speaker">NURSE</span><p id="dialogueText" aria-live="polite">Open up. It is for your own good.</p></div>
+  </section>
+  <section id="report" class="screen centered" hidden><div class="paper report"><div class="paper-head">PATIENT OBSERVATION <span>FORM 04 / 04</span></div><div class="paper-content"><p class="eyebrow">FEEDING SESSION CLOSED</p><h2>A meal to<br>remember.</h2><div class="stamp">OBSERVED</div><div class="final-score"><span>FINAL SCORE</span><strong id="finalScore">000</strong></div><dl><div><dt>Time under care</dt><dd id="finalTime">00:00</dd></div><div><dt>Wrong bites</dt><dd id="finalWrong">0</dd></div><div><dt>Successful rescues</dt><dd id="finalRescues">0</dd></div></dl><blockquote>“Patient remains difficult to feed.”<small>— NURSE'S NOTES</small></blockquote><div class="button-row"><button data-action="menu">MAIN MENU</button><button class="primary" data-action="play">ANOTHER HELPING →</button></div></div></div></section>
+  <footer class="footer"><span>CRAZY THURSDAY / UI STUDY 03</span><a href="ui-flow.html" target="_top">VIEW COMPLETE SCREEN FLOW ↗</a><span id="previewModeLabel">LOCAL PREVIEW · KEYBOARD DEMO</span></footer>
+  <dialog id="modal" class="paper"><div class="paper-head"><span id="modalTitle">PATIENT HANDBOOK</span><button id="closeModal" aria-label="Close dialog">×</button></div><div id="modalBody" class="paper-content"></div></dialog>
+</main>
+<script type="module" src="ui-preview.js"></script>
+</body></html>
