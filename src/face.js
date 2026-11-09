@@ -23,23 +23,41 @@ export async function initFaceLandmarker() {
   landmarker = await FaceLandmarker.createFromOptions(fileset, {
     baseOptions: { modelAssetPath: MODEL_URL, delegate: 'GPU' },
     runningMode: 'VIDEO',
-    numFaces: 1,
+    numFaces: 2, // a friend may be in frame; detectFace() picks the largest face
     outputFaceBlendshapes: true,
   });
   return landmarker;
 }
 
-// Returns the blendshape categories array for the current video frame, or null
-// when no (new) face is found. Caller passes the <video> element.
+// Returns the blendshape categories for the LARGEST face in the frame, or null
+// when no (new) face is found. MediaPipe may report a bystander first, so pick
+// by landmark bounding-box area instead of blindly trusting index 0 -- the
+// player is normally the closest (largest) face to the webcam.
 export function detectFace(video) {
   if (!landmarker || !video || video.readyState < 2) return null;
   if (video.currentTime === lastVideoTime) return null; // no new frame yet
   lastVideoTime = video.currentTime;
   const result = landmarker.detectForVideo(video, performance.now());
-  if (result.faceBlendshapes && result.faceBlendshapes.length > 0) {
-    return result.faceBlendshapes[0].categories;
+  const shapes = result.faceBlendshapes;
+  if (!shapes || shapes.length === 0) return null;
+
+  const faces = result.faceLandmarks || [];
+  let bestIdx = 0;
+  let bestArea = -1;
+  for (let i = 0; i < Math.min(faces.length, shapes.length); i++) {
+    const pts = faces[i];
+    if (!pts || pts.length === 0) continue;
+    let minX = 1, minY = 1, maxX = 0, maxY = 0;
+    for (const p of pts) {
+      if (p.x < minX) minX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y > maxY) maxY = p.y;
+    }
+    const area = (maxX - minX) * (maxY - minY);
+    if (area > bestArea) { bestArea = area; bestIdx = i; }
   }
-  return null;
+  return shapes[bestIdx].categories || null;
 }
 
 // Open the local webcam. Resolves with the MediaStream on success.

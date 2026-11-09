@@ -235,3 +235,19 @@ body { margin: 0; }
   border-radius: .5rem;
 }
 .panel strong { color: var(--accent); }
+
+/* Result share card shown on Game Over (the failure-frame composite). */
+.result-card {
+  display: block;
+  width: min(78vw, 340px);
+  aspect-ratio: 720 / 1080;
+  border-radius: .6rem;
+  margin: .6rem auto;
+  box-shadow: 0 6px 18px rgba(0,0,0,.5);
+}
+.card-actions {
+  display: flex;
+  gap: .6rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   nextMessage,
   classifyExpression,
+  eyesClosed,
   intentFromExpression,
   judge,
   buildThresholds,
@@ -25,6 +26,7 @@ const cats = (over) => {
     mouthSmileLeft: 0, mouthSmileRight: 0,
     mouthFrownLeft: 0, mouthFrownRight: 0,
     jawOpen: 0, tongueOut: 0,
+    eyeBlinkLeft: 0, eyeBlinkRight: 0,
   };
   return Object.entries({ ...base, ...over }).map(([categoryName, score]) => ({ categoryName, score }));
 };
@@ -70,6 +72,47 @@ test('judge scoring matches the design', () => {
   assert.equal(judge({ eatable: false }, INTENT.ACCEPT).discomfortDelta, SCORING.WRONG_EAT_DISCOMFORT);
   assert.equal(judge({ eatable: true }, INTENT.REJECT).scoreDelta, 0);
   assert.equal(judge({ eatable: true }, INTENT.REJECT).discomfortDelta, 0);
+});
+
+test('eye-defense: blink closes eyes and defends (safe, no discomfort, breaks combo upstream)', () => {
+  const closed = cats({ eyeBlinkLeft: 1, eyeBlinkRight: 1 });
+  assert.equal(classifyExpression(closed, TH), EXPRESSIONS.BLINK);
+  assert.equal(intentFromExpression(closed, TH), INTENT.DEFEND);
+  const out = judge({ eatable: true }, INTENT.DEFEND);
+  assert.equal(out.type, OUTCOME.DEFENDED);
+  assert.equal(out.discomfortDelta, 0); // never eats, never hurts
+  assert.equal(out.scoreDelta, 0);
+  // Eyes shut with a neutral mouth still reads as defense.
+  assert.equal(classifyExpression(cats({ eyeBlinkLeft: 1, eyeBlinkRight: 1, mouthSmileLeft: 0, mouthSmileRight: 0, mouthFrownLeft: 0, mouthFrownRight: 0 }), TH), EXPRESSIONS.BLINK);
+});
+
+test('closed eyes win over mouth signals (chatting / laughing while defending)', () => {
+  const shut = { eyeBlinkLeft: 1, eyeBlinkRight: 1 };
+  assert.equal(classifyExpression(cats({ ...shut, mouthSmileLeft: 0.9, mouthSmileRight: 0.9 }), TH), EXPRESSIONS.BLINK);
+  assert.equal(classifyExpression(cats({ ...shut, mouthFrownLeft: 0.8, mouthFrownRight: 0.8 }), TH), EXPRESSIONS.BLINK);
+  assert.equal(classifyExpression(cats({ ...shut, jawOpen: 0.6 }), TH), EXPRESSIONS.BLINK);
+  assert.equal(intentFromExpression(cats({ ...shut, mouthSmileLeft: 0.9, mouthSmileRight: 0.9 }), TH), INTENT.DEFEND);
+  // Only a real gag (open jaw AND tongue out) may override closed eyes.
+  assert.equal(classifyExpression(cats({ ...shut, jawOpen: 0.95, tongueOut: 0.7 }), TH), EXPRESSIONS.VOMIT);
+});
+
+test('each expression relies on its own exclusive signals', () => {
+  // Talking with an open mouth is not a gag, on calibrated or default floors.
+  assert.equal(classifyExpression(cats({ jawOpen: 0.6 }), TH), EXPRESSIONS.NEUTRAL);
+  assert.equal(classifyExpression(cats({ jawOpen: 0.6 }), buildThresholds(null)), EXPRESSIONS.NEUTRAL);
+  // One-sided mouth / eye artefacts do not count as a full expression.
+  assert.equal(classifyExpression(cats({ mouthSmileLeft: 0.9 }), TH), EXPRESSIONS.NEUTRAL);
+  assert.equal(classifyExpression(cats({ eyeBlinkLeft: 1 }), TH), EXPRESSIONS.NEUTRAL);
+  assert.equal(eyesClosed(cats({ eyeBlinkLeft: 1 }), TH), false);
+  assert.equal(eyesClosed(cats({ eyeBlinkLeft: 1, eyeBlinkRight: 1 }), TH), true);
+});
+
+test('a short blink cannot fake a defense (hold gate)', () => {
+  const shut = cats({ eyeBlinkLeft: 1, eyeBlinkRight: 1 });
+  assert.equal(intentFromExpression(shut, TH, false), INTENT.NEUTRAL);
+  assert.equal(intentFromExpression(shut, TH, true), INTENT.DEFEND);
+  // Without the hold, the bite is judged normally instead of being defended.
+  assert.equal(judge({ eatable: false }, intentFromExpression(shut, TH, false)).type, OUTCOME.WRONG_EAT);
 });
 
 test('speedForLevel accelerates with level but clamps to a fair minimum', () => {

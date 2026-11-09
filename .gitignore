@@ -7,3 +7,10 @@ android/build/
 android/local.properties
 *.keystore
 .env
+
+# Build artefacts. electron-builder emits a single ~170 MB .exe here, which
+# exceeds GitHub's 100 MB per-file limit and must never be committed.
+dist/
+# Local dev-server output (not source).
+*.log
+*.err

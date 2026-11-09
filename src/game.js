@@ -8,6 +8,7 @@ import {
   OUTCOME,
   classifyExpression,
   intentFromExpression,
+  eyesClosed,
   judge,
   buildThresholds,
   speedForLevel,
@@ -19,6 +20,9 @@ import {
 const RESULT_MS = 900;
 const RESCUE_MS = 2500;
 const SAMPLE_MS = 1500;
+// Eyes must stay shut for this long before the spoon lands. A natural blink
+// (~100ms) is too short, so it can no longer fake a defense.
+const DEFEND_HOLD_MS = 150;
 
 const NURSE_LINES = [
   'Open up. It is for your own good.',
@@ -32,11 +36,12 @@ const BADGE_TEXT = {
   [EXPRESSIONS.SMILE]: 'SMILE · accepting',
   [EXPRESSIONS.FROWN]: 'FROWN · refusing',
   [EXPRESSIONS.VOMIT]: 'GAG · vomiting',
+  [EXPRESSIONS.BLINK]: 'EYES SHUT · defending',
   [EXPRESSIONS.NEUTRAL]: 'blank stare',
   none: 'no face detected',
 };
 
-export async function startGame(mode = 'camera') {
+export async function startGame(mode = 'camera', opts = {}) {
   const el = {
     video: document.getElementById('cam'),
     overlay: document.getElementById('overlay'),
@@ -67,6 +72,9 @@ export async function startGame(mode = 'camera') {
     wrongEats: 0,
     combo: 0,
     lastCategories: null,
+    failShot: null,
+    maxCombo: 0,
+    closedSince: 0, // timestamp of the start of the current eyes-shut hold
   };
 
   const setScore = () => (el.score.textContent = String(state.score));
@@ -78,6 +86,7 @@ export async function startGame(mode = 'camera') {
   };
   const setSubtitle = (text) => (el.subtitle.textContent = text);
   const setCombo = () => {
+    if (state.combo > state.maxCombo) state.maxCombo = state.combo;
     el.combo.textContent = `combo ×${state.combo}`;
     el.combo.hidden = state.combo < 2; // a streak only shows from ×2 up
     if (state.combo >= 2) {
@@ -89,12 +98,15 @@ export async function startGame(mode = 'camera') {
 
   // --- keyboard demo mode (no camera) -------------------------------------
   const isDemo = mode === 'demo';
-  const KEY_MAP = { s: 'smile', f: 'frown', v: 'vomit' };
+  const KEY_MAP = { s: 'smile', f: 'frown', v: 'vomit', b: 'blink' };
   let demoExpr = null;
   if (isDemo) {
     window.addEventListener('keydown', (e) => {
       const k = e.key.toLowerCase();
-      if (KEY_MAP[k]) demoExpr = KEY_MAP[k];
+      if (KEY_MAP[k]) {
+        demoExpr = KEY_MAP[k];
+        e.preventDefault();
+      }
     });
     window.addEventListener('keyup', (e) => {
       const k = e.key.toLowerCase();
@@ -102,10 +114,11 @@ export async function startGame(mode = 'camera') {
     });
   }
   function demoCategories(expr) {
-    const base = { mouthSmileLeft: 0, mouthSmileRight: 0, mouthFrownLeft: 0, mouthFrownRight: 0, jawOpen: 0, tongueOut: 0 };
+    const base = { mouthSmileLeft: 0, mouthSmileRight: 0, mouthFrownLeft: 0, mouthFrownRight: 0, jawOpen: 0, tongueOut: 0, eyeBlinkLeft: 0, eyeBlinkRight: 0 };
     if (expr === 'smile') Object.assign(base, { mouthSmileLeft: 1, mouthSmileRight: 1 });
     else if (expr === 'frown') Object.assign(base, { mouthFrownLeft: 1, mouthFrownRight: 1 });
     else if (expr === 'vomit') Object.assign(base, { jawOpen: 1, tongueOut: 1 });
+    else if (expr === 'blink') Object.assign(base, { eyeBlinkLeft: 1, eyeBlinkRight: 1 });
     return Object.entries(base).map(([categoryName, score]) => ({ categoryName, score }));
   }
   function currentCategories() {
@@ -127,24 +140,24 @@ export async function startGame(mode = 'camera') {
       for (const c of categories) if (c.categoryName === name) return c.score;
       return 0;
     };
+    // Both-sided minima match classifyExpression, so calibration measures
+    // exactly the same signal that judgement later uses.
     return {
-      smile: (score('mouthSmileLeft') + score('mouthSmileRight')) / 2,
-      frown: (score('mouthFrownLeft') + score('mouthFrownRight')) / 2,
+      smile: Math.min(score('mouthSmileLeft'), score('mouthSmileRight')),
+      frown: Math.min(score('mouthFrownLeft'), score('mouthFrownRight')),
       jaw: score('jawOpen'),
       tongue: score('tongueOut'),
+      blink: Math.min(score('eyeBlinkLeft'), score('eyeBlinkRight')),
     };
   }
 
   function sampleMax(durationMs) {
     return new Promise((resolve) => {
-      const max = { smile: 0, frown: 0, jaw: 0, tongue: 0 };
+      const max = { smile: 0, frown: 0, jaw: 0, tongue: 0, blink: 0 };
       const end = performance.now() + durationMs;
       const tick = () => {
         const a = aggregate(detectFace(el.video));
-        max.smile = Math.max(max.smile, a.smile);
-        max.frown = Math.max(max.frown, a.frown);
-        max.jaw = Math.max(max.jaw, a.jaw);
-        max.tongue = Math.max(max.tongue, a.tongue);
+        for (const k of Object.keys(max)) max[k] = Math.max(max[k], a[k]);
         if (performance.now() < end) requestAnimationFrame(tick);
         else resolve(max);
       };
@@ -155,10 +168,11 @@ export async function startGame(mode = 'camera') {
   async function calibrate() {
     const cal = {};
     const steps = [
-      { key: 'neutral', title: 'Calibration 1/4 · Relax', hint: 'Keep a neutral face. Click to sample.' },
-      { key: 'smile', title: 'Calibration 2/4 · Smile', hint: 'The face you make for food you like. Click to sample.' },
-      { key: 'frown', title: 'Calibration 3/4 · Frown', hint: 'The face you make for regret. Click to sample.' },
-      { key: 'vomit', title: 'Calibration 4/4 · Gag', hint: 'The face you make for actual vomit. Click to sample.' },
+      { key: 'neutral', title: 'Calibration 1/5 · Relax', hint: 'Keep a neutral face. Click to sample.' },
+      { key: 'smile', title: 'Calibration 2/5 · Smile', hint: 'The face you make for food you like. Click to sample.' },
+      { key: 'frown', title: 'Calibration 3/5 · Frown', hint: 'The face you make for regret. Click to sample.' },
+      { key: 'vomit', title: 'Calibration 4/5 · Gag', hint: 'The face you make for actual vomit. Click to sample.' },
+      { key: 'blink', title: 'Calibration 5/5 · Eyes shut', hint: 'Close both eyes and hold. Click to sample.' },
     ];
     for (const step of steps) {
       await new Promise((done) => {
@@ -179,6 +193,7 @@ export async function startGame(mode = 'camera') {
   // --- round flow ----------------------------------------------------------
   function startRound() {
     state.round += 1;
+    state.closedSince = 0; // each serve starts a fresh eyes-shut hold
     state.item = randomItem();
     el.item.src = state.item.image;
     el.item.alt = state.item.name;
@@ -198,12 +213,12 @@ export async function startGame(mode = 'camera') {
     setScore();
     setDiscomfort();
 
-    // Difficulty only climbs on a correct play (good food + smile, or foreign
-    // object + frown); a wrong bite slows it back down, never below level 0.
-    // A correct play also extends the combo streak; any miss breaks it.
-    if (outcome.type === OUTCOME.CORRECT_ACCEPT || outcome.type === OUTCOME.CORRECT_REJECT) {
+    // Correct plays AND eye-defense both accelerate the game (level up). But
+    // defense breaks the combo streak even though it speeds things up.
+    if (outcome.type === OUTCOME.CORRECT_ACCEPT || outcome.type === OUTCOME.CORRECT_REJECT || outcome.type === OUTCOME.DEFENDED) {
       state.level += 1;
-      state.combo += 1;
+      if (outcome.type === OUTCOME.DEFENDED) state.combo = 0;
+      else state.combo += 1;
     } else if (outcome.type === OUTCOME.WRONG_EAT) {
       state.level = Math.max(0, state.level - 1);
       state.combo = 0;
@@ -214,6 +229,7 @@ export async function startGame(mode = 'camera') {
 
     if (outcome.type === OUTCOME.WRONG_EAT) {
       state.wrongEats += 1;
+      state.failShot = captureFrame(); // grab the face at the moment of failure
       state.phase = 'rescue';
       state.rescueResolved = false;
       state.phaseStart = performance.now();
@@ -225,11 +241,18 @@ export async function startGame(mode = 'camera') {
   }
 
   function flashResult(outcome) {
-    const msg = {
-      [OUTCOME.CORRECT_ACCEPT]: 'Swallowed. +10',
-      [OUTCOME.CORRECT_REJECT]: 'Rejected. +10',
-      [OUTCOME.DECLINED_FOOD]: 'You declined food.',
-    }[outcome.type];
+    let msg;
+    if (outcome.type === OUTCOME.DEFENDED) {
+      // Nurse nags you for shutting your eyes instead of eating -- rotate lines.
+      const lines = ['Excuse me?!', 'You Need To EAT!', "Don't go hungry.", 'Anyone there?'];
+      msg = lines[Math.floor(Math.random() * lines.length)];
+    } else {
+      msg = {
+        [OUTCOME.CORRECT_ACCEPT]: 'Swallowed. +10',
+        [OUTCOME.CORRECT_REJECT]: 'Rejected. +10',
+        [OUTCOME.DECLINED_FOOD]: 'You declined food.',
+      }[outcome.type];
+    }
     setSubtitle(msg);
     state.phase = 'result';
     state.phaseStart = performance.now();
@@ -249,19 +272,112 @@ export async function startGame(mode = 'camera') {
   function gameOver() {
     state.phase = 'gameover';
     const seconds = Math.round((performance.now() - state.startTime) / 1000);
+    if (!state.failShot) state.failShot = captureFrame(); // fallback grab if no prior fail
+    const card = buildResultCard(state.failShot, {
+      score: state.score,
+      seconds,
+      wrongEats: state.wrongEats,
+      maxCombo: state.maxCombo,
+      discomfort: state.discomfort,
+    });
+    const cardUrl = card.toDataURL('image/png');
     showOverlay(
       `<h1>Game Over</h1>` +
-      `<p>Score <strong>${state.score}</strong></p>` +
-      `<p>Survived <strong>${seconds}</strong> s · Wrong bites <strong>${state.wrongEats}</strong></p>` +
-      `<button id="againBtn" type="button">Play Again</button>`
+      `<img id="resultCard" class="result-card" src="${cardUrl}" alt="Feeding Result Card">` +
+      `<div class="card-actions">` +
+      `<button id="saveCardBtn" type="button">Save Result Card</button>` +
+      `<button id="againBtn" type="button">Play Again</button>` +
+      `</div>`
     );
     document.getElementById('againBtn').addEventListener('click', () => location.reload());
+    document.getElementById('saveCardBtn').addEventListener('click', () => {
+      card.toBlob((blob) => {
+        if (!blob) return;
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'expression-feeding-result.png';
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      });
+    });
+  }
+
+  // Snapshot the live camera frame (mirrored, to match the on-screen view) as a
+  // canvas. Used at the failure moment and as the share-card background.
+  function captureFrame() {
+    const v = el.video;
+    if (!v || !v.videoWidth) return null;
+    const c = document.createElement('canvas');
+    c.width = v.videoWidth;
+    c.height = v.videoHeight;
+    const ctx = c.getContext('2d');
+    ctx.save();
+    ctx.translate(c.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(v, 0, 0, c.width, c.height);
+    ctx.restore();
+    return c;
+  }
+
+  // Compose a portrait share card: the failure frame behind a dark scrim, with
+  // the game name and a stat block. Returns a canvas ready to download.
+  function buildResultCard(failCanvas, s) {
+    const W = 720;
+    const H = 1080;
+    const card = document.createElement('canvas');
+    card.width = W;
+    card.height = H;
+    const ctx = card.getContext('2d');
+    ctx.fillStyle = '#162a29';
+    ctx.fillRect(0, 0, W, H);
+    if (failCanvas) {
+      const scale = Math.max(W / failCanvas.width, H / failCanvas.height);
+      const dw = failCanvas.width * scale;
+      const dh = failCanvas.height * scale;
+      ctx.drawImage(failCanvas, (W - dw) / 2, (H - dh) / 2, dw, dh);
+      ctx.fillStyle = 'rgba(10,20,20,0.55)';
+      ctx.fillRect(0, 0, W, H);
+    }
+    // Title + subtitle use the game's pixel typefaces so the card matches the
+    // on-screen UI (Press Start 2P for the title, VT323 for body text).
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#f3b66c';
+    ctx.font = '700 34px "Press Start 2P", monospace';
+    ctx.fillText('EXPRESSION', W / 2, 110);
+    ctx.fillText('FEEDING', W / 2, 156);
+    ctx.fillStyle = '#f5f0df';
+    ctx.font = '700 40px "VT323", monospace';
+    ctx.fillText('Feeding Results · The Crash', W / 2, 222);
+    const rows = [
+      ['SCORE', String(s.score)],
+      ['SURVIVED', `${s.seconds}s`],
+      ['BAD BITES', String(s.wrongEats)],
+      ['MAX COMBO', `x${s.maxCombo}`],
+      ['FINAL DISCOMFORT', `${s.discomfort} / 100`],
+    ];
+    ctx.textAlign = 'left';
+    ctx.font = '600 40px "VT323", monospace';
+    let y = 340;
+    for (const [k, v] of rows) {
+      ctx.fillStyle = '#f5f0df';
+      ctx.fillText(k, 90, y);
+      ctx.fillStyle = '#f3b66c';
+      ctx.textAlign = 'right';
+      ctx.fillText(v, W - 90, y);
+      ctx.textAlign = 'left';
+      y += 82;
+    }
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#6b8e87';
+    ctx.font = '28px "VT323", monospace';
+    ctx.fillText('Share your feeding fail!', W / 2, H - 60);
+    return card;
   }
 
   // --- main loop -----------------------------------------------------------
   function loop(now) {
     const categories = currentCategories();
-    state.lastCategories = categories;
+    if (categories) state.lastCategories = categories; // keep the last good frame
     const expr = classifyExpression(categories, state.thresholds);
     setBadge(categories ? expr : 'none');
 
@@ -272,7 +388,21 @@ export async function startGame(mode = 'camera') {
       // Fade the hand+spoon to opaque quickly (within the first 25% of the
       // serve), then hold. The scale motion above is unchanged.
       el.spoon.style.opacity = String(Math.min(1, progress * 4));
-      state.lastIntent = intentFromExpression(categories, state.thresholds);
+      // Track a continuous eyes-shut hold. A frame with no fresh webcam data is
+      // NOT "eyes open" -- only a real frame with open eyes breaks the hold,
+      // otherwise 30fps sampling could never accumulate DEFEND_HOLD_MS.
+      const shut = eyesClosed(categories, state.thresholds);
+      if (shut) {
+        if (!state.closedSince) state.closedSince = now;
+      } else if (categories) {
+        state.closedSince = 0;
+      }
+      const held = state.closedSince > 0 && now - state.closedSince >= DEFEND_HOLD_MS;
+      const holdOk = isDemo || held; // demo keys stay instantly responsive
+      // If the arrival frame has no new camera data but the hold is established,
+      // judge against the last good frame so the defense is not lost.
+      const judged = categories ?? (held ? state.lastCategories : null);
+      state.lastIntent = intentFromExpression(judged, state.thresholds, holdOk);
       if (progress >= 1) resolveServe();
     } else if (state.phase === 'rescue') {
       if (!state.rescueResolved) {
@@ -306,7 +436,7 @@ export async function startGame(mode = 'camera') {
     if (isDemo) {
       state.thresholds = buildThresholds(null); // use literature floors; no calibration
       hideOverlay();
-      setSubtitle('Keys: S accept · F refuse · V gag · release = blank');
+      setSubtitle('Keys: S accept · F refuse · V gag · B defend(eyes shut) · release = blank');
       state.startTime = performance.now();
       startRound();
       requestAnimationFrame(loop);
