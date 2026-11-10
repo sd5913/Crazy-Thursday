@@ -146,8 +146,9 @@ export async function startGame(mode = 'camera', opts = {}) {
     return isDemo ? demoCategories(demoExpr) : detectFace(el.video);
   }
 
-  function showOverlay(html) {
+  function showOverlay(html, variant = '') {
     el.panel.innerHTML = html;
+    el.panel.className = variant ? `panel ${variant}` : 'panel';
     el.overlay.hidden = false;
   }
   function hideOverlay() {
@@ -291,6 +292,49 @@ export async function startGame(mode = 'camera', opts = {}) {
     state.phaseDuration = RESULT_MS;
   }
 
+  // --- restart -------------------------------------------------------------
+  // A run ends only when discomfort hits MAX; the camera stream, the landmark
+  // model and this player's thresholds all survive it. Reloading the page for
+  // Play Again would ask for camera permission again and replay all five
+  // calibration samples, which is only useful when the player changes.
+  function resetRun() {
+    Object.assign(state, {
+      phase: 'idle',
+      score: 0,
+      discomfort: 0,
+      round: 0,
+      level: 0,
+      item: null,
+      phaseStart: 0,
+      phaseDuration: 0,
+      lastIntent: INTENT.NEUTRAL,
+      rescueResolved: false,
+      prevExpr: null,
+      startTime: performance.now(),
+      wrongEats: 0,
+      combo: 0,
+      lastCategories: null,
+      lastFaceAt: 0,
+      failShot: null,
+      maxCombo: 0,
+      closedSince: 0,
+    });
+    setScore();
+    setDiscomfort();
+    setCombo();
+  }
+
+  // Same player -> keep the calibration and restart in place. New player (or a
+  // big lighting/camera change) -> sample the five expressions again. The
+  // choice is explicit: blendshapes cannot tell us who is in front of the lens.
+  async function restartGame(recalibrate) {
+    if (recalibrate && !isDemo) await calibrate();
+    resetRun();
+    hideOverlay();
+    startRound();
+    requestAnimationFrame(loop);
+  }
+
   function gameOver() {
     state.phase = 'gameover';
     const seconds = Math.round((performance.now() - state.startTime) / 1000);
@@ -300,17 +344,29 @@ export async function startGame(mode = 'camera', opts = {}) {
       seconds,
       wrongEats: state.wrongEats,
       maxCombo: state.maxCombo,
+      resultTitle: 'The Crush', // placeholder: swap for a per-run result label
     });
     const cardUrl = card.toDataURL('image/png');
     showOverlay(
       `<h1>Game Over</h1>` +
       `<img id="resultCard" class="result-card" src="${cardUrl}" alt="Feeding Result Card">` +
-      `<div class="card-actions">` +
+      `<div class="card-actions${isDemo ? '' : ' two-up'}">` +
+      `<button id="againBtn" type="button" title="Same player: keep the current calibration">Play Again</button>` +
+      (isDemo ? '' : `<button id="newPlayerBtn" type="button" title="Recalibrate for a different player or new lighting">New Player</button>`) +
+      `</div>` +
+      `<div class="card-actions save-row">` +
       `<button id="saveCardBtn" type="button">Save Result Card</button>` +
-      `<button id="againBtn" type="button">Play Again</button>` +
-      `</div>`
+      `</div>` +
+      `<p class="share-note">Share your feeding!</p>`,
+      'gameover-panel'
     );
-    document.getElementById('againBtn').addEventListener('click', () => location.reload());
+    document.getElementById('againBtn').addEventListener('click', () => {
+      // Fall back to calibration only if no thresholds exist for this session.
+      restartGame(!state.thresholds);
+    });
+    document.getElementById('newPlayerBtn')?.addEventListener('click', () => {
+      restartGame(true);
+    });
     document.getElementById('saveCardBtn').addEventListener('click', () => {
       card.toBlob((blob) => {
         if (!blob) return;
@@ -360,15 +416,20 @@ export async function startGame(mode = 'camera', opts = {}) {
       ctx.fillRect(0, 0, W, H);
     }
     // Same pixel typefaces as the on-screen UI: Press Start 2P for the
-    // heading, VT323 for the rest of the card.
+    // heading, VT323 for the rest of the card. The card is displayed at ~0.5x,
+    // so the canvas type needs to be about twice the on-screen target.
     ctx.textAlign = 'center';
     ctx.fillStyle = '#f3b66c';
-    ctx.font = '700 34px "Press Start 2P", monospace';
-    ctx.fillText('EXPRESSION', W / 2, 110);
-    ctx.fillText('FEEDING', W / 2, 156);
+    ctx.font = '700 42px "Press Start 2P", monospace';
+    // maxWidth keeps the enlarged type inside the card even when the pixel
+    // webfonts are unavailable and a wider monospace fallback is used.
+    ctx.fillText('EXPRESSION', W / 2, 112, W - 120);
+    ctx.fillText('FEEDING', W / 2, 168, W - 120);
     ctx.fillStyle = '#f5f0df';
-    ctx.font = '700 40px "VT323", monospace';
-    ctx.fillText('Feeding Results · The Crash', W / 2, 222);
+    ctx.font = '700 58px "VT323", monospace';
+    ctx.fillText('Feeding Results', W / 2, 238, W - 120);
+    // Per-run result label; 'The Crush' is only a placeholder for now.
+    ctx.fillText(s.resultTitle || 'The Crush', W / 2, 310, W - 120);
     // Game Over only fires at MAX_DISCOMFORT, so a "final discomfort" row
     // would always read 100/100 and carry no information.
     const rows = [
@@ -378,21 +439,19 @@ export async function startGame(mode = 'camera', opts = {}) {
       ['MAX COMBO', `x${s.maxCombo}`],
     ];
     ctx.textAlign = 'left';
-    ctx.font = '600 40px "VT323", monospace';
-    let y = 340;
+    ctx.font = '600 50px "VT323", monospace';
+    let y = 400;
     for (const [k, v] of rows) {
       ctx.fillStyle = '#f5f0df';
-      ctx.fillText(k, 90, y);
+      ctx.fillText(k, 90, y, 250);
       ctx.fillStyle = '#f3b66c';
       ctx.textAlign = 'right';
-      ctx.fillText(v, W - 90, y);
+      ctx.fillText(v, W - 90, y, 250);
       ctx.textAlign = 'left';
-      y += 82;
+      y += 110;
     }
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#6b8e87';
-    ctx.font = '28px "VT323", monospace';
-    ctx.fillText('Share your feeding fail!', W / 2, H - 60);
+    // "Share your feeding!" is HTML outside the card, so a saved PNG contains
+    // only the artwork and the stats, never that line.
     return card;
   }
 
@@ -455,7 +514,8 @@ export async function startGame(mode = 'camera', opts = {}) {
     // Game over is decided when a result/feedback phase ends, so a maxed-out
     // rescue still gets to play before the screen switches.
     state.prevExpr = expr;
-    requestAnimationFrame(loop);
+    // Game Over stops the chain; restartGame() starts exactly one fresh loop.
+    if (state.phase !== 'gameover') requestAnimationFrame(loop);
   }
 
   // --- boot ----------------------------------------------------------------

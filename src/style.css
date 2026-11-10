@@ -328,7 +328,8 @@ body { margin: 0; }
 /* Result share card shown on Game Over (the failure-frame composite). */
 .result-card {
   display: block;
-  width: min(78vw, 340px);
+  width: min(78vw, 380px);
+  max-width: 100%;
   aspect-ratio: 720 / 1080;
   border-radius: .6rem;
   margin: .6rem auto;
@@ -336,9 +337,42 @@ body { margin: 0; }
 }
 .card-actions {
   display: flex;
-  gap: .6rem;
+  gap: .9rem;
   justify-content: center;
   flex-wrap: wrap;
+}
+/* Game Over: the two short actions share the first row, the longer save action
+   gets its own row. Result-panel type is a step larger than the start /
+   calibration panels on both desktop and phones. */
+.card-actions + .card-actions { margin-top: .85rem; }
+.gameover-panel h1 { font-size: clamp(2.6rem, 9vw, 4.4rem); }
+/* Type stays put; only the yellow frame shrinks closer to the words so the
+   buttons no longer crowd each other. */
+.gameover-panel .card-actions button {
+  margin-top: 0;
+  padding: clamp(.45rem, 1.4vw, .65rem) clamp(.55rem, 1.6vw, .9rem);
+  font: 700 clamp(1.35rem, 4.4vw, 1.85rem) var(--pixel-body);
+}
+/* Two equal columns keep the short actions on one row even on a narrow phone;
+   each button hugs its own text instead of stretching to the column. */
+.gameover-panel .card-actions.two-up {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .9rem;
+}
+.gameover-panel .card-actions.two-up button,
+.gameover-panel .save-row button {
+  width: auto;
+  max-width: 100%;
+  justify-self: center;
+}
+/* Outside the PNG on purpose: saving the card never includes this line. */
+.gameover-panel .share-note {
+  margin: .9rem 0 0;
+  color: #6b8e87;
+  font-size: clamp(1.55rem, 4.6vw, 2.2rem);
+  line-height: 1.1;
+  opacity: 1;
 }
 
 /* --- responsive corner layout ------------------------------------------- */
