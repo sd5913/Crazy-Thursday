@@ -12,6 +12,15 @@
   --pixel-display: 'Press Start 2P', 'Courier New', monospace;
   --pixel-body: 'VT323', 'Courier New', monospace;
   --ui-font: var(--pixel-body);
+  /* Shared type scale: the top title and the bottom badge main line are the
+     same size, while the left/right status readouts are one step smaller. */
+  --ui-title: clamp(1.15rem, 2.25vw, 1.8rem);
+  --ui-side: clamp(1.35rem, 1.9vw, 1.5rem);
+  /* One set of layout tokens drives every corner HUD element, so the same
+     spacing works on a phone, a short laptop window and a wide desktop. */
+  --hud-gutter: clamp(.75rem, 2.2vw, 1.4rem);
+  --hud-bottom: max(clamp(.75rem, 2vh, 1.4rem), env(safe-area-inset-bottom, 0px));
+  --hud-top: max(.9rem, env(safe-area-inset-top, 0px));
   background: var(--bg);
 }
 * { box-sizing: border-box; }
@@ -47,13 +56,17 @@ body { margin: 0; }
   z-index: 1;
 }
 
+/* Top status bar: SCORE / DISCOMFORT sit in the outer grid columns. The title
+   is centred against the whole bar (not against a 1fr column), so unequal
+   left/right widths can no longer push it off-centre. */
 .hud {
   position: absolute;
   top: 0; left: 0; right: 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 1rem 1.4rem;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: .5rem;
+  padding: var(--hud-top) var(--hud-gutter) clamp(.6rem, 1.5vh, 1rem);
   z-index: 3;
   pointer-events: none;
 }
@@ -68,18 +81,35 @@ body { margin: 0; }
   z-index: -1;
   border-radius: 0 0 1rem 1rem;
 }
+/* SCORE gets its own, larger step so the number reads at a glance;
+   DISCOMFORT keeps the smaller side size to leave room for the title. */
 .score {
-  font: 700 1.5rem var(--ui-font);
+  grid-column: 1;
+  justify-self: start;
+  font: 700 clamp(1.6rem, 2.4vw, 1.9rem) var(--ui-font);
   letter-spacing: .08em;
   background: rgba(0,0,0,.35);
   padding: .4rem .7rem;
   border-radius: .4rem;
 }
 .score span { color: var(--accent); }
-.discomfort { text-align: right; font: 700 1.2rem var(--ui-font); letter-spacing: .1em; }
+/* Nudged below the very top edge: the bar no longer sits on the notch / the
+   status-bar art, and reads as its own row instead of crowding the title. */
+.discomfort {
+  grid-column: 3;
+  justify-self: end;
+  max-width: 100%;
+  margin-top: clamp(.55rem, 1.8vh, 1.3rem);
+  text-align: right;
+  font: 700 var(--ui-side) var(--ui-font);
+  letter-spacing: .1em;
+}
 .discomfort .bar {
   margin-top: .3rem;
-  width: 42vw; max-width: 320px; height: 14px;
+  margin-left: auto;
+  width: clamp(110px, 22vw, 280px);
+  max-width: 100%;
+  height: clamp(10px, 1.6vh, 14px);
   background: rgba(255,255,255,.15);
   border-radius: 8px; overflow: hidden;
 }
@@ -125,9 +155,80 @@ body { margin: 0; }
   box-shadow: 0 6px 14px rgba(0,0,0,.45);
 }
 
-.badge {
+/* Centred on the FULL status bar width, independent of the two side columns. */
+.game-title {
   position: absolute;
-  left: 1.4rem; bottom: 1.4rem;
+  left: 50%;
+  top: var(--hud-top);
+  transform: translateX(-50%);
+  white-space: nowrap;
+  text-align: center;
+  font-family: var(--pixel-display);
+  font-weight: 800;
+  font-size: var(--ui-title);
+  letter-spacing: .04em;
+  color: #f5f0df;
+  text-shadow: 0 2px 8px rgba(0,0,0,.6);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Bottom HUD: the badge and the speech bubble share ONE layout container, so
+   they can never overlap. Wide windows place them side by side; narrow and
+   short windows stack them (see the media queries at the end of the file). */
+.bottom-hud {
+  position: absolute;
+  left: var(--hud-gutter);
+  right: var(--hud-gutter);
+  bottom: var(--hud-bottom);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: clamp(.5rem, 1.4vh, .9rem);
+  pointer-events: none;
+}
+/* Shared box for the bubble art, the subtitle text and the combo badge. */
+.bubble {
+  position: relative;
+  flex: none;
+  width: min(100%, 640px);
+  aspect-ratio: 640 / 120;
+  margin: 0 auto;
+}
+.hint-bubble {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+  z-index: 2;
+  pointer-events: none;
+}
+.subtitle {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  padding: 0 .6rem;
+  text-align: center;
+  font-size: clamp(1.15rem, 4.4vw, 3rem);
+  line-height: 1.05;
+  font-weight: 700;
+  font-family: var(--pixel-body);
+  text-shadow: 0 2px 6px rgba(0,0,0,.7);
+  overflow-wrap: anywhere;
+}
+/* Long one-off legends (the keyboard demo intro) must stay inside the bubble
+   even after the narrow-screen font bump. */
+.subtitle.long { font-size: clamp(.95rem, 2.6vw, 1.5rem); }
+/* Fixed width: the box no longer swings between a narrow "GAG" and a wide
+   "NO FACE / not detected" state, so its right edge always stays put. */
+.badge {
+  align-self: flex-start;
+  width: clamp(11.5rem, 38vw, 15.5rem);
+  max-width: 100%;
+  text-align: center;
   z-index: 3;
   display: flex;
   flex-direction: column;
@@ -135,85 +236,47 @@ body { margin: 0; }
   font-family: var(--pixel-display);
   font-weight: 700;
   line-height: 1.15;
-  padding: .7rem 1rem;
+  padding: .65rem .85rem;
   border-radius: .5rem;
   background: rgba(0,0,0,.45);
   border: 2px solid #6b8e87;
 }
-/* Two-line badge: enlarged primary label over a smaller note. */
+/* Two-line badge: primary label over a smaller note. */
 .badge-main {
-  font-size: clamp(1.15rem, 2.8vw, 1.85rem);
+  font-size: var(--ui-title);
   letter-spacing: .04em;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .badge-sub {
   font-family: var(--pixel-body);
-  font-size: clamp(1rem, 2.2vw, 1.5rem);
+  font-size: var(--ui-side);
   letter-spacing: .05em;
   opacity: .85;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .badge[data-expr="smile"] { border-color: #7bd88f; color: #bdf3c8; }
 .badge[data-expr="frown"] { border-color: #e0a93f; color: #f6d79a; }
 .badge[data-expr="vomit"] { border-color: var(--danger); color: #ffb3a3; }
 .badge[data-expr="neutral"], .badge[data-expr="none"] { border-color: #6b8e87; }
-
-.subtitle {
-  position: absolute;
-  left: 50%; bottom: 1.4rem;
-  transform: translateX(-50%);
-  z-index: 3;
-  width: min(90vw, 640px);
-  aspect-ratio: 640 / 120;
-  display: grid;
-  place-items: center;
-  text-align: center;
-  font-size: clamp(1.8rem, 5.5vw, 3rem);
-  font-weight: 700;
-  font-family: var(--pixel-body);
-  text-shadow: 0 2px 6px rgba(0,0,0,.7);
-}
-/* Hint bubble placeholder sits behind the subtitle text. Keep the same box
-   (position + aspect ratio) as .subtitle so the art's real bubble aligns. */
-.hint-bubble {
-  position: absolute;
-  left: 50%; bottom: 1.4rem;
-  transform: translateX(-50%);
-  width: min(90vw, 640px);
-  aspect-ratio: 640 / 120;
-  z-index: 2;
-  pointer-events: none;
-}
-/* Top game title, rendered as crisp HTML over the status-bar background. */
-.game-title {
-  position: absolute;
-  left: 50%; top: 50%;
-  transform: translate(-50%, -50%);
-  font-family: var(--pixel-display);
-  font-weight: 800;
-  font-size: clamp(0.85rem, 2.4vw, 1.4rem);
-  letter-spacing: .08em;
-  color: #f5f0df;
-  text-shadow: 0 2px 8px rgba(0,0,0,.6);
-  pointer-events: none;
-  z-index: 2;
-}
-/* Combo streak, parked at the top-right corner of the bottom subtitle bubble,
-   tilted to the right. Position uses the same box as .hint-bubble / .subtitle
-   (bottom: 1.4rem, width min(90vw,640px), 640/120 ratio). */
+/* Combo sits at the top-right corner of the bubble, tilted to the right. */
 .combo {
   position: absolute;
-  bottom: calc(1.4rem + min(90vw, 640px) * 0.1875 - 1rem);
-  right: calc(50% - min(90vw, 640px) / 2 + 0.8rem);
+  right: .8rem;
+  bottom: calc(100% - 1rem);
   transform: rotate(10deg);
   font-family: var(--pixel-display);
   font-weight: 800;
-  font-size: clamp(1rem, 4vw, 1.9rem);
+  font-size: clamp(.85rem, 3vw, 1.9rem);
   letter-spacing: .06em;
   color: var(--accent);
   text-shadow: 0 2px 8px rgba(0,0,0,.6);
   pointer-events: none;
-  z-index: 3;
+  z-index: 4;
+  white-space: nowrap;
 }
 .combo[hidden] { display: none; }
 .combo.pop { animation: comboPop .25s ease; }
@@ -230,26 +293,31 @@ body { margin: 0; }
   place-items: center;
   background: rgba(10,18,17,.78);
   backdrop-filter: blur(3px);
+  padding: var(--hud-top) var(--hud-gutter) var(--hud-bottom);
 }
 .overlay[hidden] { display: none; }
 .panel {
   width: min(90vw, 480px);
+  max-height: calc(100vh - 2 * var(--hud-gutter));
+  max-height: calc(100dvh - 2 * var(--hud-gutter));
+  overflow-y: auto;
   background: #1d3431;
   border: 1px solid #2f4d48;
   border-radius: 1rem;
-  padding: 2rem;
+  padding: clamp(1.2rem, 4vw, 2rem);
   text-align: center;
   box-shadow: 0 20px 50px rgba(0,0,0,.5);
 }
-.panel h1 { margin: 0 0 1rem; font-family: var(--pixel-body); font-weight: 400; font-size: clamp(2.4rem, 8vw, 3.6rem); letter-spacing: .02em; color: var(--accent); text-shadow: 0 2px 10px rgba(0,0,0,.4); }
-.panel p { font-size: 1.6rem; line-height: 1.35; opacity: .9; }
+.panel h1 { margin: 0 0 1rem; font-family: var(--pixel-body); font-weight: 400; font-size: clamp(2rem, 8vw, 3.6rem); letter-spacing: .02em; color: var(--accent); text-shadow: 0 2px 10px rgba(0,0,0,.4); }
+.panel p { font-size: clamp(1.15rem, 4vw, 1.6rem); line-height: 1.35; opacity: .9; }
 .panel button, #startBtn {
   margin-top: 1.4rem;
+  max-width: 100%;
   border: 0;
   background: var(--accent);
   color: #162a29;
   padding: 1rem 1.4rem;
-  font: 700 1.3rem var(--pixel-body);
+  font: 700 clamp(1rem, 3.4vw, 1.3rem) var(--pixel-body);
   cursor: pointer;
   border-radius: .5rem;
 }
@@ -269,4 +337,95 @@ body { margin: 0; }
   gap: .6rem;
   justify-content: center;
   flex-wrap: wrap;
+}
+
+/* --- responsive corner layout ------------------------------------------- */
+/* Narrow windows: SCORE, the two-line title and DISCOMFORT share ONE row and
+   are centre-aligned, so the status bar is only as tall as the title. Equal
+   1fr side columns keep the title centred even when the readouts differ. */
+@media (max-width: 760px) {
+  .hud {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: .35rem;
+    padding-top: max(.35rem, env(safe-area-inset-top, 0px));
+  }
+  .score { grid-column: 1; grid-row: 1; }
+  .discomfort {
+    grid-column: 3;
+    grid-row: 1;
+    margin-top: 0;
+    letter-spacing: .04em;
+  }
+  .discomfort .bar { width: clamp(80px, 18vw, 200px); }
+  /* Two centred lines ("Expression" / "Feeding") instead of one tiny line. */
+  .game-title span { display: block; }
+  .game-title {
+    position: static;
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: center;
+    align-self: center;
+    transform: none;
+    font-size: var(--ui-title);
+    line-height: 1.1;
+    letter-spacing: .02em;
+  }
+}
+/* Wide windows: badge on the left, centred bubble, empty right cell keeps the
+   bubble truly centred without letting the badge grow into its space. The
+   1080px floor gives the fixed-width badge enough room in the left column. */
+@media (min-width: 1080px) and (min-height: 481px) {
+  .bottom-hud {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: end;
+    gap: clamp(.75rem, 2vw, 1.5rem);
+  }
+  .badge { grid-column: 1; grid-row: 1; align-self: end; }
+  .bubble { grid-column: 2; grid-row: 1; width: min(44vw, 560px); }
+}
+/* Phones: bigger readouts and a bigger subtitle; a slightly taller bubble keeps
+   long nurse lines inside after the font bump. */
+@media (max-width: 600px) {
+  .badge { padding: .5rem .7rem; gap: .2rem; }
+  .bubble { aspect-ratio: 640 / 140; }
+  .subtitle { font-size: clamp(1.6rem, 6.4vw, 2.1rem); line-height: 1; padding: 0 .6rem; }
+  .result-card { width: min(70vw, 300px); }
+}
+/* Very narrow phones: keep all three on the same row by trimming the title and
+   the side readouts just enough, without hiding anything. */
+@media (max-width: 420px) {
+  .game-title { font-size: .8rem; }
+  .score { font-size: 1.25rem; letter-spacing: .02em; }
+  .discomfort { font-size: 1.15rem; letter-spacing: .02em; }
+  .discomfort .bar { width: 72px; }
+}
+/* Landscape phones / short desktop windows: back to a single row and shrink
+   every vertical consumer so the spoon still has room to animate. */
+@media (max-height: 480px) {
+  .hud { padding-top: max(.5rem, env(safe-area-inset-top, 0px)); }
+  .game-title { top: max(.5rem, env(safe-area-inset-top, 0px)); }
+  .discomfort { margin-top: .25rem; }
+  .bottom-hud {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: end;
+    gap: .6rem;
+  }
+  .badge { grid-column: 1; grid-row: 1; width: 11rem; padding: .45rem .6rem; }
+  .bubble { grid-column: 2; grid-row: 1; width: min(100%, 420px); aspect-ratio: 640 / 120; }
+  .badge-main { font-size: .85rem; }
+  .badge-sub { font-size: .8rem; }
+  .subtitle { font-size: clamp(1.2rem, 4vh, 1.6rem); line-height: 1; }
+  .combo { bottom: calc(100% - .6rem); font-size: .9rem; }
+  .spoon { width: min(38vw, 360px); }
+  .panel { padding: 1rem; }
+}
+/* Narrow AND short (landscape phone): one small title line saves height; the
+   three readouts still share the same centre-aligned row. */
+@media (max-width: 760px) and (max-height: 480px) {
+  .game-title span { display: inline; }
+  .game-title { font-size: .8rem; line-height: 1; }
+  .discomfort { margin-top: 0; }
 }

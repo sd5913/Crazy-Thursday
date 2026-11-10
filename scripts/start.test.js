@@ -19,7 +19,9 @@ test('web launcher rejects invalid ports', async () => {
   assert.match(error, /PORT must be/);
 });
 
-test('web launcher builds outside repository cwd and serves modules', { timeout: 15000 }, async (t) => {
+// The launcher copies src/ into www/ before it starts; on Windows that copy
+// can take >10s, so keep the timeout well above the observed cold-start time.
+test('web launcher builds outside repository cwd and serves modules', { timeout: 30000 }, async (t) => {
   const child = spawn(process.execPath, [fileURLToPath(entry)], {
     cwd: tmpdir(),
     env: { ...process.env, PORT: '18137', NO_OPEN: '1' },
@@ -33,13 +35,17 @@ test('web launcher builds outside repository cwd and serves modules', { timeout:
     }
   });
   await new Promise((resolve, reject) => {
+    let output = '';
     child.on('error', reject);
     child.once('exit', (code) => reject(new Error(`Server exited early: ${code}`)));
     child.stdout.on('data', (data) => {
-      if (String(data).includes('Crazy Thursday:')) resolve();
+      output += data;
+      if (output.includes('Crazy Thursday:')) resolve();
     });
   });
-  const base = 'http://localhost:18137';
+  // The server binds 127.0.0.1 only; the numeric address avoids an IPv6
+  // localhost round-trip on every request.
+  const base = 'http://127.0.0.1:18137';
   const page = await fetch(base);
   assert.equal(page.status, 200);
   assert.match(await page.text(), /id="demoBtn"/);

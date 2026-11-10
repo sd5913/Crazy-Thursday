@@ -25,6 +25,7 @@ const cats = (over) => {
   const base = {
     mouthSmileLeft: 0, mouthSmileRight: 0,
     mouthFrownLeft: 0, mouthFrownRight: 0,
+    mouthPressLeft: 0, mouthPressRight: 0,
     jawOpen: 0, tongueOut: 0,
     eyeBlinkLeft: 0, eyeBlinkRight: 0,
   };
@@ -72,16 +73,20 @@ test('judge scoring matches the design', () => {
   assert.equal(judge({ eatable: false }, INTENT.ACCEPT).discomfortDelta, SCORING.WRONG_EAT_DISCOMFORT);
   assert.equal(judge({ eatable: true }, INTENT.REJECT).scoreDelta, 0);
   assert.equal(judge({ eatable: true }, INTENT.REJECT).discomfortDelta, 0);
+  assert.equal(judge({ eatable: true }, INTENT.DEFEND).discomfortDelta, SCORING.DEFEND_DISCOMFORT);
+  assert.equal(judge({ eatable: true }, INTENT.DEFEND).scoreDelta, 0);
 });
 
-test('eye-defense: blink closes eyes and defends (safe, no discomfort, breaks combo upstream)', () => {
+test('eye-defense: blink closes eyes and defends (+5 discomfort, breaks combo upstream)', () => {
   const closed = cats({ eyeBlinkLeft: 1, eyeBlinkRight: 1 });
   assert.equal(classifyExpression(closed, TH), EXPRESSIONS.BLINK);
   assert.equal(intentFromExpression(closed, TH), INTENT.DEFEND);
   const out = judge({ eatable: true }, INTENT.DEFEND);
   assert.equal(out.type, OUTCOME.DEFENDED);
-  assert.equal(out.discomfortDelta, 0); // never eats, never hurts
+  assert.equal(out.discomfortDelta, SCORING.DEFEND_DISCOMFORT); // no eating, but dodging still stings
   assert.equal(out.scoreDelta, 0);
+  // The cost applies to any food, so defending cannot be a free stalling tactic.
+  assert.equal(judge({ eatable: false }, INTENT.DEFEND).discomfortDelta, SCORING.DEFEND_DISCOMFORT);
   // Eyes shut with a neutral mouth still reads as defense.
   assert.equal(classifyExpression(cats({ eyeBlinkLeft: 1, eyeBlinkRight: 1, mouthSmileLeft: 0, mouthSmileRight: 0, mouthFrownLeft: 0, mouthFrownRight: 0 }), TH), EXPRESSIONS.BLINK);
 });
@@ -97,14 +102,58 @@ test('closed eyes win over mouth signals (chatting / laughing while defending)',
 });
 
 test('each expression relies on its own exclusive signals', () => {
-  // Talking with an open mouth is not a gag, on calibrated or default floors.
-  assert.equal(classifyExpression(cats({ jawOpen: 0.6 }), TH), EXPRESSIONS.NEUTRAL);
-  assert.equal(classifyExpression(cats({ jawOpen: 0.6 }), buildThresholds(null)), EXPRESSIONS.NEUTRAL);
-  // One-sided mouth / eye artefacts do not count as a full expression.
-  assert.equal(classifyExpression(cats({ mouthSmileLeft: 0.9 }), TH), EXPRESSIONS.NEUTRAL);
-  assert.equal(classifyExpression(cats({ eyeBlinkLeft: 1 }), TH), EXPRESSIONS.NEUTRAL);
-  assert.equal(eyesClosed(cats({ eyeBlinkLeft: 1 }), TH), false);
+  // Normal talking (jaw ~0.3) is not a gag, on calibrated or default floors.
+  assert.equal(classifyExpression(cats({ jawOpen: 0.3 }), TH), EXPRESSIONS.NEUTRAL);
+  assert.equal(classifyExpression(cats({ jawOpen: 0.3 }), buildThresholds(null)), EXPRESSIONS.NEUTRAL);
+  // A wide gagging jaw IS recognised even without sticking the tongue out.
+  assert.equal(classifyExpression(cats({ jawOpen: 0.9 }), TH), EXPRESSIONS.VOMIT);
+  // A weak one-sided signal is diluted by the average, not taken as a full pose.
+  assert.equal(classifyExpression(cats({ mouthSmileLeft: 0.8 }), TH), EXPRESSIONS.NEUTRAL);
+  assert.equal(classifyExpression(cats({ eyeBlinkLeft: 0.8 }), TH), EXPRESSIONS.NEUTRAL);
+  assert.equal(eyesClosed(cats({ eyeBlinkLeft: 0.8 }), TH), false);
   assert.equal(eyesClosed(cats({ eyeBlinkLeft: 1, eyeBlinkRight: 1 }), TH), true);
+});
+
+// Regression: a realistic calibration must not push everyday-intensity poses
+// down to NEUTRAL (that was the bug when both() used min plus high floors).
+test('everyday-intensity poses stay recognisable after calibration', () => {
+  const realTh = buildThresholds({
+    neutral: { smile: 0.05, frown: 0.03, jaw: 0.02, tongue: 0, blink: 0.08 },
+    smile: { smile: 0.65, frown: 0.02, jaw: 0.08, tongue: 0, blink: 0.1 },
+    frown: { smile: 0.02, frown: 0.28, jaw: 0.05, tongue: 0, blink: 0.1 },
+    vomit: { smile: 0.02, frown: 0.05, jaw: 0.75, tongue: 0.15, blink: 0.15 },
+    blink: { smile: 0.03, frown: 0.03, jaw: 0.03, tongue: 0, blink: 0.85 },
+  });
+  assert.equal(classifyExpression(cats({ mouthSmileLeft: 0.55, mouthSmileRight: 0.5 }), realTh), EXPRESSIONS.SMILE);
+  assert.equal(classifyExpression(cats({ mouthFrownLeft: 0.22, mouthFrownRight: 0.18 }), realTh), EXPRESSIONS.FROWN);
+  assert.equal(classifyExpression(cats({ jawOpen: 0.7, tongueOut: 0.05 }), realTh), EXPRESSIONS.VOMIT);
+  assert.equal(classifyExpression(cats({ eyeBlinkLeft: 0.75, eyeBlinkRight: 0.65 }), realTh), EXPRESSIONS.BLINK);
+  assert.equal(classifyExpression(cats({}), realTh), EXPRESSIONS.NEUTRAL);
+});
+
+// Regression: frown is the weakest blendshape and mouthSmile* has a resting
+// bias on real faces, so a mild frown must not be swallowed by the smile
+// comparison or by a high calibrated bar.
+test('mild frowns and tight-lipped refusals stay recognisable', () => {
+  const realTh = buildThresholds({
+    neutral: { smile: 0.12, frown: 0.03, jaw: 0.02, tongue: 0, blink: 0.08 },
+    smile: { smile: 0.65, frown: 0.02, jaw: 0.08, tongue: 0, blink: 0.1 },
+    frown: { smile: 0.02, frown: 0.28, jaw: 0.05, tongue: 0, blink: 0.1 },
+    vomit: { smile: 0.02, frown: 0.05, jaw: 0.75, tongue: 0.15, blink: 0.15 },
+    blink: { smile: 0.03, frown: 0.03, jaw: 0.03, tongue: 0, blink: 0.85 },
+  });
+  // Weak corners plus a constant resting smile bias: previously NEUTRAL.
+  assert.equal(
+    classifyExpression(cats({ mouthFrownLeft: 0.18, mouthFrownRight: 0.14, mouthSmileLeft: 0.12, mouthSmileRight: 0.12 }), realTh),
+    EXPRESSIONS.FROWN
+  );
+  // Pressed lips (a common "no") with no mouthFrown signal at all.
+  assert.equal(classifyExpression(cats({ mouthPressLeft: 0.55, mouthPressRight: 0.45 }), realTh), EXPRESSIONS.FROWN);
+  // A real smile still wins; a neutral face with a smile bias stays neutral.
+  assert.equal(classifyExpression(cats({ mouthSmileLeft: 0.6, mouthSmileRight: 0.6 }), realTh), EXPRESSIONS.SMILE);
+  assert.equal(classifyExpression(cats({ mouthSmileLeft: 0.12, mouthSmileRight: 0.12 }), realTh), EXPRESSIONS.NEUTRAL);
+  // An expressive calibration pose cannot push the frown bar out of reach.
+  assert.ok(buildThresholds({ neutral: { frown: 0.03 }, frown: { frown: 0.9 } }).frown <= 0.22);
 });
 
 test('a short blink cannot fake a defense (hold gate)', () => {

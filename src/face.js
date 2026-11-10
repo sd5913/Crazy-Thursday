@@ -15,6 +15,11 @@ const MODEL_URL =
 
 let landmarker = null;
 let lastVideoTime = -1;
+let lastDetectAt = 0;
+// Some WebViews report a coarse (or stuck) video.currentTime. If no fresh
+// timestamp arrives for this long, run detection again anyway instead of
+// returning null forever and leaving the HUD stuck on NO FACE.
+const FRAME_STALE_MS = 200;
 
 export async function initFaceLandmarker() {
   if (landmarker) return landmarker;
@@ -30,14 +35,19 @@ export async function initFaceLandmarker() {
 }
 
 // Returns the blendshape categories for the LARGEST face in the frame, or null
-// when no (new) face is found. MediaPipe may report a bystander first, so pick
-// by landmark bounding-box area instead of blindly trusting index 0 -- the
-// player is normally the closest (largest) face to the webcam.
+// when there is no fresh camera frame / no face at all. A null here is NOT
+// necessarily "the player left" -- the caller reuses the last good result
+// during brief gaps (see game.js loop). MediaPipe may report a bystander first,
+// so pick by landmark bounding-box area instead of trusting index 0.
 export function detectFace(video) {
   if (!landmarker || !video || video.readyState < 2) return null;
-  if (video.currentTime === lastVideoTime) return null; // no new frame yet
+  const now = performance.now();
+  if (video.currentTime === lastVideoTime && now - lastDetectAt < FRAME_STALE_MS) {
+    return null; // no new camera frame yet
+  }
   lastVideoTime = video.currentTime;
-  const result = landmarker.detectForVideo(video, performance.now());
+  lastDetectAt = now;
+  const result = landmarker.detectForVideo(video, now);
   const shapes = result.faceBlendshapes;
   if (!shapes || shapes.length === 0) return null;
 

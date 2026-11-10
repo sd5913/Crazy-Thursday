@@ -33,6 +33,9 @@ export const OUTCOME = {
 export const SCORING = {
   CORRECT_POINTS: 10,
   WRONG_EAT_DISCOMFORT: 25,
+  // Eye-defense blocks the bite but is not free: dodging meals forever must
+  // still build towards Game Over.
+  DEFEND_DISCOMFORT: 5,
   RESCUE_SUCCESS_RELIEF: 15, // net discomfort on a good puke = 10
   RESCUE_FAIL_PENALTY: 10, // net discomfort on a failed puke = 35
   MAX_DISCOMFORT: 100,
@@ -46,15 +49,18 @@ const BS = {
   SMILE_R: 'mouthSmileRight',
   FROWN_L: 'mouthFrownLeft',
   FROWN_R: 'mouthFrownRight',
+  PRESS_L: 'mouthPressLeft',
+  PRESS_R: 'mouthPressRight',
   JAW: 'jawOpen',
   TONGUE: 'tongueOut',
   BLINK_L: 'eyeBlinkLeft',
   BLINK_R: 'eyeBlinkRight',
 };
 
-// Requiring BOTH sides avoids one-sided artefacts (talking with a crooked mouth,
-// half-lit frames, a friend's face at the edge) reading as a full expression.
-const both = (l, r) => Math.min(l, r);
+// Average the two sides. MediaPipe's left/right scores are rarely identical
+// (lighting, head angle, a crooked mouth); the mean keeps a genuine but mild
+// expression readable instead of discarding the stronger side.
+const both = (l, r) => (l + r) / 2;
 
 export function blendshapeScore(categories, name, fallback = 0) {
   if (!Array.isArray(categories)) return fallback;
@@ -64,6 +70,24 @@ export function blendshapeScore(categories, name, fallback = 0) {
   return fallback;
 }
 
+// mouthFrownLeft/Right is by far the weakest face blendshape: an obvious grimace
+// often scores only 0.1-0.3, while mouthSmile* easily reaches 0.6-0.9. A
+// tight-lipped "no" shows up mostly in mouthPress* instead, so use it as a
+// discounted backup channel. Calibration (game.js aggregate) and judgement
+// MUST share this exact function or the threshold would measure a different
+// value from the one being classified.
+export function frownScore(categories) {
+  const corners = both(
+    blendshapeScore(categories, BS.FROWN_L),
+    blendshapeScore(categories, BS.FROWN_R)
+  );
+  const press = both(
+    blendshapeScore(categories, BS.PRESS_L),
+    blendshapeScore(categories, BS.PRESS_R)
+  );
+  return Math.max(corners, press * 0.5);
+}
+
 // Derive usable thresholds from a calibration session. `baseline` holds the
 // max score seen per signal while the player posed each expression. The margins
 // keep a relaxed neutral from reading as an expression, and the floors keep the
@@ -71,20 +95,27 @@ export function blendshapeScore(categories, name, fallback = 0) {
 export function buildThresholds(cal) {
   const b = cal || {};
   const base = (k) => (b.neutral && b.neutral[k] != null ? b.neutral[k] : 0);
+  // Frown gets its own, much lower bar: a small rise over the player's resting
+  // face is enough, and a very expressive calibration pose must not push the
+  // bar out of reach for everyday frowns.
+  const frownFloor = Math.max(0.09, base('frown') + 0.04);
+  const frownCap = Math.max(frownFloor, 0.22);
   return {
-    smile: Math.max((b.smile?.smile ?? 0) * 0.8, base('smile') + 0.15, 0.3),
-    frown: Math.max((b.frown?.frown ?? 0) * 0.8, base('frown') + 0.12, 0.25),
-    // Higher floor: ordinary talking/laughing (jaw ~0.3-0.5) must not read as
-    // a gag when the player has not been calibrated.
-    vomitJawOpen: Math.max((b.vomit?.jaw ?? 0) * 0.85, base('jaw') + 0.25, 0.55),
+    // 0.7 (not 0.8) so everyday poses do not have to be stronger than the ones
+    // made during calibration.
+    smile: Math.max((b.smile?.smile ?? 0) * 0.7, base('smile') + 0.15, 0.3),
+    frown: Math.min(Math.max((b.frown?.frown ?? 0) * 0.5, frownFloor), frownCap),
+    // jawOpen is the gag's key signal; the floor stays low enough that an
+    // uncalibrated open mouth is still recognised. Calibration raises it.
+    vomitJawOpen: Math.max((b.vomit?.jaw ?? 0) * 0.85, base('jaw') + 0.25, 0.4),
     vomitTongue: Math.max((b.vomit?.tongue ?? 0) * 0.6, base('tongue') + 0.08, 0.12),
-    // Calibrated from a dedicated eyes-shut step; the floor suits most eyes.
-    blink: Math.max((b.blink?.blink ?? 0) * 0.8, 0.6),
+    // Calibrated from the dedicated Lidded step.
+    blink: Math.max((b.blink?.blink ?? 0) * 0.7, 0.5),
   };
 }
 
 // Eye closure is fully independent of the mouth: smiling, frowning or talking
-// while shutting your eyes cannot mask it. Both eyes must be shut.
+// while shutting your eyes cannot mask it.
 export function eyesClosed(categories, thresholds) {
   if (!categories || !thresholds) return false;
   return both(
@@ -95,32 +126,34 @@ export function eyesClosed(categories, thresholds) {
 
 // Classify the face for the HUD. Priority is by signal exclusivity, not by a
 // global score ranking:
-//   1. Gag      -> tongueOut + jawOpen (tongue is the exclusive signal)
+//   1. Gag       -> jawOpen (tongueOut only LOWERS the required jaw opening)
 //   2. Eyes shut -> eyeBlink L/R only (mouth signals are ignored entirely)
-//   3. Smile / Frown -> their own mouth-corner signals plus a clear margin
+//   3. Smile     -> mouthSmile L/R (must beat its own threshold)
+//   4. Frown     -> frownScore() (weak corners OR pressed lips)
 export function classifyExpression(categories, thresholds) {
   if (!categories || !thresholds) return EXPRESSIONS.NEUTRAL;
   const smile = both(blendshapeScore(categories, BS.SMILE_L), blendshapeScore(categories, BS.SMILE_R));
-  const frown = both(blendshapeScore(categories, BS.FROWN_L), blendshapeScore(categories, BS.FROWN_R));
+  const frown = frownScore(categories);
   const jaw = blendshapeScore(categories, BS.JAW);
   const tongue = blendshapeScore(categories, BS.TONGUE);
+  const shut = eyesClosed(categories, thresholds);
+  const tongueOut = tongue >= thresholds.vomitTongue;
 
-  // Only a real gag (open jaw AND tongue out) may override closed eyes. This
-  // keeps the rescue/purge gesture working even if the player screws up their
-  // eyes while gagging.
-  if (jaw >= thresholds.vomitJawOpen && tongue >= thresholds.vomitTongue) {
-    return EXPRESSIONS.VOMIT;
-  }
-  // Closed eyes win over EVERY mouth shape: chatting, laughing or grimacing
-  // while defending no longer cancels the defense.
-  if (eyesClosed(categories, thresholds)) return EXPRESSIONS.BLINK;
-  // A very wide jaw still reads as a gag for players who cannot stick their
-  // tongue out -- but only with the eyes open (checked above).
-  if (jaw >= thresholds.vomitJawOpen + 0.15) return EXPRESSIONS.VOMIT;
-  // Smile / frown rely only on their own corners, with a margin so an
-  // ambiguous half-smile does not flip-flop between the two.
-  if (smile >= thresholds.smile && smile >= frown + 0.1) return EXPRESSIONS.SMILE;
-  if (frown >= thresholds.frown && frown > smile + 0.1) return EXPRESSIONS.FROWN;
+  // jawOpen drives the gag. Sticking the tongue out is a bonus that lowers the
+  // bar -- most people gag without actually sticking their tongue out, so it
+  // must NOT be a hard requirement.
+  const gagJaw = thresholds.vomitJawOpen - (tongueOut ? 0.15 : 0);
+  // A real gag (tongue out) may override closed eyes so the rescue/purge
+  // gesture still works. Otherwise closed eyes win over EVERY mouth shape:
+  // chatting / laughing / grimacing while defending no longer cancels it.
+  if (jaw >= gagJaw && (tongueOut || !shut)) return EXPRESSIONS.VOMIT;
+  if (shut) return EXPRESSIONS.BLINK;
+  if (smile >= thresholds.smile && smile >= frown + 0.05) return EXPRESSIONS.SMILE;
+  // A genuine smile already returned above. mouthSmile* carries a constant
+  // 0.1-0.2 resting bias on many faces, so requiring frown to beat smile (the
+  // old "+ 0.05" margin) swallowed almost every frown. Here we only need to
+  // know the player is not actually smiling.
+  if (frown >= thresholds.frown && smile < thresholds.smile) return EXPRESSIONS.FROWN;
   return EXPRESSIONS.NEUTRAL;
 }
 
@@ -139,10 +172,11 @@ export function intentFromExpression(categories, thresholds, holdOk = true) {
 // Decide the outcome when the spoon reaches the mouth.
 export function judge(item, intent) {
   // Eye-defense: the patient shuts their eyes and refuses the bite outright.
-  // Always safe (no eating, no discomfort). The caller (resolveServe) breaks the
+  // No eating and no points, but each dodge still adds a little discomfort so
+  // defending forever is not a free win. The caller (resolveServe) breaks the
   // combo on defense but still accelerates the game, like a correct play.
   if (intent === INTENT.DEFEND) {
-    return { type: OUTCOME.DEFENDED, scoreDelta: 0, discomfortDelta: 0 };
+    return { type: OUTCOME.DEFENDED, scoreDelta: 0, discomfortDelta: SCORING.DEFEND_DISCOMFORT };
   }
   // Eating only happens on an explicit ACCEPT (smile). A frown or no expression
   // means the patient did not take the bite, so a good food with no expression

@@ -7,6 +7,7 @@ import {
   INTENT,
   OUTCOME,
   classifyExpression,
+  frownScore,
   intentFromExpression,
   eyesClosed,
   judge,
@@ -23,6 +24,10 @@ const SAMPLE_MS = 1500;
 // Eyes must stay shut for this long before the spoon lands. A natural blink
 // (~100ms) is too short, so it can no longer fake a defense.
 const DEFEND_HOLD_MS = 150;
+// rAF runs at 60-144fps while the webcam is usually ~30fps, so most frames
+// have no fresh camera data. Only report NO FACE after this long without ANY
+// valid detection; brief gaps reuse the last good frame instead.
+const FACE_LOST_MS = 400;
 
 const NURSE_LINES = [
   'Open up. It is for your own good.',
@@ -73,6 +78,7 @@ export async function startGame(mode = 'camera', opts = {}) {
     wrongEats: 0,
     combo: 0,
     lastCategories: null,
+    lastFaceAt: 0, // timestamp of the last valid face detection
     failShot: null,
     maxCombo: 0,
     closedSince: 0, // timestamp of the start of the current eyes-shut hold
@@ -95,7 +101,11 @@ export async function startGame(mode = 'camera', opts = {}) {
     el.badge.replaceChildren(top, bottom);
     el.badge.dataset.expr = expr;
   };
-  const setSubtitle = (text) => (el.subtitle.textContent = text);
+  const setSubtitle = (text) => {
+    el.subtitle.textContent = text;
+    // Long one-off legends would otherwise overflow the fixed-height bubble.
+    el.subtitle.classList.toggle('long', text.length > 44);
+  };
   const setCombo = () => {
     if (state.combo > state.maxCombo) state.maxCombo = state.combo;
     el.combo.textContent = `combo ×${state.combo}`;
@@ -151,14 +161,15 @@ export async function startGame(mode = 'camera', opts = {}) {
       for (const c of categories) if (c.categoryName === name) return c.score;
       return 0;
     };
-    // Both-sided minima match classifyExpression, so calibration measures
-    // exactly the same signal that judgement later uses.
+    // Both-sided averages match classifyExpression's both(); frown uses the
+    // shared frownScore() so calibration measures exactly the signal judgement
+    // later reads (weak corners + pressed lips).
     return {
-      smile: Math.min(score('mouthSmileLeft'), score('mouthSmileRight')),
-      frown: Math.min(score('mouthFrownLeft'), score('mouthFrownRight')),
+      smile: (score('mouthSmileLeft') + score('mouthSmileRight')) / 2,
+      frown: frownScore(categories),
       jaw: score('jawOpen'),
       tongue: score('tongueOut'),
-      blink: Math.min(score('eyeBlinkLeft'), score('eyeBlinkRight')),
+      blink: (score('eyeBlinkLeft') + score('eyeBlinkRight')) / 2,
     };
   }
 
@@ -181,7 +192,7 @@ export async function startGame(mode = 'camera', opts = {}) {
     const steps = [
       { key: 'neutral', title: 'Calibration 1/5 · Relax', hint: 'Keep a neutral face. Click to sample.' },
       { key: 'smile', title: 'Calibration 2/5 · Smile', hint: 'The face you make for food you like. Click to sample.' },
-      { key: 'frown', title: 'Calibration 3/5 · Frown', hint: 'The face you make for regret. Click to sample.' },
+      { key: 'frown', title: 'Calibration 3/5 · Frown', hint: 'Pull the mouth corners down, or press your lips tight. Click to sample.' },
       { key: 'vomit', title: 'Calibration 4/5 · Gag', hint: 'The face you make for actual vomit. Click to sample.' },
       { key: 'blink', title: 'Calibration 5/5 · Lidded', hint: 'Close both eyes and hold. Click to sample.' },
     ];
@@ -387,10 +398,19 @@ export async function startGame(mode = 'camera', opts = {}) {
 
   // --- main loop -----------------------------------------------------------
   function loop(now) {
-    const categories = currentCategories();
-    if (categories) state.lastCategories = categories; // keep the last good frame
-    const expr = classifyExpression(categories, state.thresholds);
-    setBadge(categories ? expr : 'none');
+    const fresh = currentCategories();
+    if (fresh) {
+      state.lastCategories = fresh;
+      state.lastFaceAt = now;
+    }
+    // A missing result usually means "no new webcam frame yet", not "no face".
+    // Reuse the last good detection for BOTH the badge and the judgement; only
+    // give up after FACE_LOST_MS without any valid frame.
+    const faceLost = !state.lastFaceAt || now - state.lastFaceAt > FACE_LOST_MS;
+    if (faceLost) state.closedSince = 0;
+    const face = faceLost ? null : state.lastCategories;
+    const expr = classifyExpression(face, state.thresholds);
+    setBadge(faceLost ? 'none' : expr);
 
     if (state.phase === 'serving') {
       const progress = Math.min(1, (now - state.phaseStart) / state.phaseDuration);
@@ -399,21 +419,17 @@ export async function startGame(mode = 'camera', opts = {}) {
       // Fade the hand+spoon to opaque quickly (within the first 25% of the
       // serve), then hold. The scale motion above is unchanged.
       el.spoon.style.opacity = String(Math.min(1, progress * 4));
-      // Track a continuous eyes-shut hold. A frame with no fresh webcam data is
-      // NOT "eyes open" -- only a real frame with open eyes breaks the hold,
-      // otherwise 30fps sampling could never accumulate DEFEND_HOLD_MS.
-      const shut = eyesClosed(categories, state.thresholds);
+      // Continuous eyes-shut hold. Reused frames keep the hold alive across
+      // camera gaps; only a real frame showing open eyes breaks it.
+      const shut = eyesClosed(face, state.thresholds);
       if (shut) {
         if (!state.closedSince) state.closedSince = now;
-      } else if (categories) {
+      } else if (face) {
         state.closedSince = 0;
       }
       const held = state.closedSince > 0 && now - state.closedSince >= DEFEND_HOLD_MS;
       const holdOk = isDemo || held; // demo keys stay instantly responsive
-      // If the arrival frame has no new camera data but the hold is established,
-      // judge against the last good frame so the defense is not lost.
-      const judged = categories ?? (held ? state.lastCategories : null);
-      state.lastIntent = intentFromExpression(judged, state.thresholds, holdOk);
+      state.lastIntent = intentFromExpression(face, state.thresholds, holdOk);
       if (progress >= 1) resolveServe();
     } else if (state.phase === 'rescue') {
       if (!state.rescueResolved) {
