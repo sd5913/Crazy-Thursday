@@ -219,9 +219,11 @@ body { margin: 0; }
   text-shadow: 0 2px 6px rgba(0,0,0,.7);
   overflow-wrap: anywhere;
 }
-/* Long one-off legends (the keyboard demo intro) must stay inside the bubble
-   even after the narrow-screen font bump. */
-.subtitle.long { font-size: clamp(.95rem, 2.6vw, 1.5rem); }
+/* Long one-off legends (the keyboard demo intro) need one step down, not a
+   tiny fixed size. Every breakpoint overrides this rule with the SAME
+   specificity (.subtitle.long), otherwise it would outrank the plain
+   .subtitle bump and keep long lines unreadable on phones. */
+.subtitle.long { font-size: clamp(1.15rem, 2.8vw, 1.75rem); line-height: 1.1; }
 /* Fixed width: the box no longer swings between a narrow "GAG" and a wide
    "NO FACE / not detected" state, so its right edge always stays put. */
 .badge {
@@ -357,8 +359,8 @@ body { margin: 0; }
     margin-top: 0;
     letter-spacing: .04em;
   }
-  .discomfort .bar { width: clamp(80px, 18vw, 200px); }
-  /* Two centred lines ("Expression" / "Feeding") instead of one tiny line. */
+  /* Two centred lines ("Expression" / "Feeding") instead of one tiny line.
+     That taller row leaves room for the bar, so it keeps its normal width. */
   .game-title span { display: block; }
   .game-title {
     position: static;
@@ -385,21 +387,29 @@ body { margin: 0; }
   .badge { grid-column: 1; grid-row: 1; align-self: end; }
   .bubble { grid-column: 2; grid-row: 1; width: min(44vw, 560px); }
 }
-/* Phones: bigger readouts and a bigger subtitle; a slightly taller bubble keeps
-   long nurse lines inside after the font bump. */
+/* Phones: bigger readouts and a bigger subtitle; a taller bubble keeps long
+   lines inside after the font bump. The .long rule MUST repeat the bumped
+   scale here (same specificity) or it keeps the small base size. */
 @media (max-width: 600px) {
   .badge { padding: .5rem .7rem; gap: .2rem; }
-  .bubble { aspect-ratio: 640 / 140; }
-  .subtitle { font-size: clamp(1.6rem, 6.4vw, 2.1rem); line-height: 1; padding: 0 .6rem; }
+  .bubble { aspect-ratio: 640 / 190; }
+  .subtitle { font-size: clamp(1.95rem, 7.4vw, 2.45rem); line-height: 1; padding: 0 .5rem; }
+  .subtitle.long { font-size: clamp(1.4rem, 4.6vw, 1.8rem); line-height: 1.05; padding: 0 .45rem; }
   .result-card { width: min(70vw, 300px); }
 }
-/* Very narrow phones: keep all three on the same row by trimming the title and
-   the side readouts just enough, without hiding anything. */
+/* On 320-390px phones the enlarged subtitle wraps to three lines, which no
+   longer fits a bubble sized purely by aspect-ratio. Give upright narrow
+   windows a height floor; short landscape windows keep their own rule below. */
+@media (max-width: 600px) and (min-height: 481px) {
+  .bubble { min-height: 118px; }
+}
+/* Very narrow phones: keep all three on the same row by trimming only the type
+   sizes, without hiding anything. The bar keeps its normal width and merely
+   follows its grid column via max-width: 100%. */
 @media (max-width: 420px) {
   .game-title { font-size: .8rem; }
   .score { font-size: 1.25rem; letter-spacing: .02em; }
   .discomfort { font-size: 1.15rem; letter-spacing: .02em; }
-  .discomfort .bar { width: 72px; }
 }
 /* Landscape phones / short desktop windows: back to a single row and shrink
    every vertical consumer so the spoon still has room to animate. */
@@ -414,10 +424,11 @@ body { margin: 0; }
     gap: .6rem;
   }
   .badge { grid-column: 1; grid-row: 1; width: 11rem; padding: .45rem .6rem; }
-  .bubble { grid-column: 2; grid-row: 1; width: min(100%, 420px); aspect-ratio: 640 / 120; }
+  .bubble { grid-column: 2; grid-row: 1; width: min(100%, 420px); aspect-ratio: 640 / 155; }
   .badge-main { font-size: .85rem; }
   .badge-sub { font-size: .8rem; }
-  .subtitle { font-size: clamp(1.2rem, 4vh, 1.6rem); line-height: 1; }
+  .subtitle { font-size: clamp(1.5rem, 5vh, 2rem); line-height: 1; }
+  .subtitle.long { font-size: clamp(1.3rem, 4vh, 1.65rem); line-height: 1.05; }
   .combo { bottom: calc(100% - .6rem); font-size: .9rem; }
   .spoon { width: min(38vw, 360px); }
   .panel { padding: 1rem; }
@@ -428,4 +439,9 @@ body { margin: 0; }
   .game-title span { display: inline; }
   .game-title { font-size: .8rem; line-height: 1; }
   .discomfort { margin-top: 0; }
+}
+/* Narrow AND short: the fixed-width badge leaves the bubble only ~280px, so
+   an enlarged long legend needs more height than the plain short-window rule. */
+@media (max-width: 600px) and (max-height: 480px) {
+  .bubble { aspect-ratio: 640 / 220; }
 }

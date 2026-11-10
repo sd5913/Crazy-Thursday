@@ -300,7 +300,6 @@ export async function startGame(mode = 'camera', opts = {}) {
       seconds,
       wrongEats: state.wrongEats,
       maxCombo: state.maxCombo,
-      discomfort: state.discomfort,
     });
     const cardUrl = card.toDataURL('image/png');
     showOverlay(
@@ -370,12 +369,13 @@ export async function startGame(mode = 'camera', opts = {}) {
     ctx.fillStyle = '#f5f0df';
     ctx.font = '700 40px "VT323", monospace';
     ctx.fillText('Feeding Results · The Crash', W / 2, 222);
+    // Game Over only fires at MAX_DISCOMFORT, so a "final discomfort" row
+    // would always read 100/100 and carry no information.
     const rows = [
       ['SCORE', String(s.score)],
       ['SURVIVED', `${s.seconds}s`],
       ['BAD BITES', String(s.wrongEats)],
       ['MAX COMBO', `x${s.maxCombo}`],
-      ['FINAL DISCOMFORT', `${s.discomfort} / 100`],
     ];
     ctx.textAlign = 'left';
     ctx.font = '600 40px "VT323", monospace';
