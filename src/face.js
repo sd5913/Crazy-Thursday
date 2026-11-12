@@ -1,3 +1,4 @@
+import { measureEyes } from './eye-geometry.js';
 // Local, on-device face landmarking for the feeding game.
 //
 // Uses MediaPipe Tasks Vision (FaceLandmarker with face blendshapes) loaded from
@@ -14,8 +15,7 @@ const MODEL_URL =
   'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
 
 let landmarker = null;
-let lastVideoTime = -1;
-let lastDetectAt = 0;
+let initialization = null;
 // Some WebViews report a coarse (or stuck) video.currentTime. If no fresh
 // timestamp arrives for this long, run detection again anyway instead of
 // returning null forever and leaving the HUD stuck on NO FACE.
@@ -23,51 +23,62 @@ const FRAME_STALE_MS = 200;
 
 export async function initFaceLandmarker() {
   if (landmarker) return landmarker;
-  const { FaceLandmarker, FilesetResolver } = await import(VISION_URL);
-  const fileset = await FilesetResolver.forVisionTasks(WASM_URL);
-  landmarker = await FaceLandmarker.createFromOptions(fileset, {
-    baseOptions: { modelAssetPath: MODEL_URL, delegate: 'GPU' },
-    runningMode: 'VIDEO',
-    numFaces: 2, // a friend may be in frame; detectFace() picks the largest face
-    outputFaceBlendshapes: true,
-  });
-  return landmarker;
+  if (!initialization) {
+    initialization = (async () => {
+      const { FaceLandmarker, FilesetResolver } = await import(VISION_URL);
+      const fileset = await FilesetResolver.forVisionTasks(WASM_URL);
+      landmarker = await FaceLandmarker.createFromOptions(fileset, {
+        baseOptions: { modelAssetPath: MODEL_URL, delegate: 'GPU' },
+        runningMode: 'VIDEO',
+        numFaces: 1, // single-player tracking enables MediaPipe's landmark smoothing
+        outputFaceBlendshapes: true,
+      });
+      return landmarker;
+    })().catch((err) => {
+      initialization = null;
+      throw err;
+    });
+  }
+  return initialization;
 }
 
-// Returns the blendshape categories for the LARGEST face in the frame, or null
-// when there is no fresh camera frame / no face at all. A null here is NOT
-// necessarily "the player left" -- the caller reuses the last good result
-// during brief gaps (see game.js loop). MediaPipe may report a bystander first,
-// so pick by landmark bounding-box area instead of trusting index 0.
-export function detectFace(video) {
-  if (!landmarker || !video || video.readyState < 2) return null;
-  const now = performance.now();
-  if (video.currentTime === lastVideoTime && now - lastDetectAt < FRAME_STALE_MS) {
-    return null; // no new camera frame yet
-  }
-  lastVideoTime = video.currentTime;
-  lastDetectAt = now;
-  const result = landmarker.detectForVideo(video, now);
-  const shapes = result.faceBlendshapes;
-  if (!shapes || shapes.length === 0) return null;
+// A skipped video frame is different from an inference that found no face.
+export function createFaceSampler(getModel, clock = () => performance.now()) {
+  let lastVideo = null;
+  let lastVideoTime = -1;
+  let lastDetectAt = -Infinity;
+  return {
+    reset() {
+      lastVideo = null;
+      lastVideoTime = -1;
+      lastDetectAt = -Infinity;
+    },
+    detect(video) {
+      const model = getModel();
+      if (!model || !video || video.readyState < 2) return { inferred: false };
+      const now = clock();
+      if (video === lastVideo && video.currentTime === lastVideoTime && now - lastDetectAt < FRAME_STALE_MS) {
+        return { inferred: false };
+      }
+      const freshVideoFrame = video !== lastVideo || video.currentTime !== lastVideoTime;
+      lastVideo = video;
+      lastVideoTime = video.currentTime;
+      lastDetectAt = now;
+      const result = model.detectForVideo(video, now);
+      const durationMs = clock() - now;
+      const categories = result.faceBlendshapes?.[0]?.categories || null;
+      return { inferred: true, freshVideoFrame, categories, eyeGeometry: measureEyes(result.faceLandmarks?.[0], video.videoWidth, video.videoHeight), durationMs, timestamp: now };
+    },
+  };
+}
 
-  const faces = result.faceLandmarks || [];
-  let bestIdx = 0;
-  let bestArea = -1;
-  for (let i = 0; i < Math.min(faces.length, shapes.length); i++) {
-    const pts = faces[i];
-    if (!pts || pts.length === 0) continue;
-    let minX = 1, minY = 1, maxX = 0, maxY = 0;
-    for (const p of pts) {
-      if (p.x < minX) minX = p.x;
-      if (p.y < minY) minY = p.y;
-      if (p.x > maxX) maxX = p.x;
-      if (p.y > maxY) maxY = p.y;
-    }
-    const area = (maxX - minX) * (maxY - minY);
-    if (area > bestArea) { bestArea = area; bestIdx = i; }
-  }
-  return shapes[bestIdx].categories || null;
+const sampler = createFaceSampler(() => landmarker);
+export const resetFaceTracking = () => sampler.reset();
+export const detectFaceFrame = (video) => sampler.detect(video);
+
+// Keep the game's existing categories/null contract and brief result reuse.
+export function detectFace(video) {
+  return detectFaceFrame(video).categories || null;
 }
 
 // Open the local webcam. Resolves with the MediaStream on success.

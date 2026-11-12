@@ -9,7 +9,7 @@ export function nextMessage(count) {
 
 export const EXPRESSIONS = {
   SMILE: 'smile',
-  FROWN: 'frown',
+  REFUSAL: 'refusal',
   VOMIT: 'vomit',
   BLINK: 'blink',
   NEUTRAL: 'neutral',
@@ -52,7 +52,6 @@ const BS = {
   PRESS_L: 'mouthPressLeft',
   PRESS_R: 'mouthPressRight',
   JAW: 'jawOpen',
-  TONGUE: 'tongueOut',
   BLINK_L: 'eyeBlinkLeft',
   BLINK_R: 'eyeBlinkRight',
 };
@@ -70,22 +69,17 @@ export function blendshapeScore(categories, name, fallback = 0) {
   return fallback;
 }
 
-// mouthFrownLeft/Right is by far the weakest face blendshape: an obvious grimace
-// often scores only 0.1-0.3, while mouthSmile* easily reaches 0.6-0.9. A
-// tight-lipped "no" shows up mostly in mouthPress* instead, so use it as a
-// discounted backup channel. Calibration (game.js aggregate) and judgement
-// MUST share this exact function or the threshold would measure a different
-// value from the one being classified.
+// Refusal combines downward mouth corners and brows; lip pressing is ignored.
 export function frownScore(categories) {
   const corners = both(
     blendshapeScore(categories, BS.FROWN_L),
     blendshapeScore(categories, BS.FROWN_R)
   );
-  const press = both(
-    blendshapeScore(categories, BS.PRESS_L),
-    blendshapeScore(categories, BS.PRESS_R)
+  const brow = both(
+    blendshapeScore(categories, 'browDownLeft'),
+    blendshapeScore(categories, 'browDownRight')
   );
-  return Math.max(corners, press * 0.5);
+  return Math.max(corners, brow);
 }
 
 // Derive usable thresholds from a calibration session. `baseline` holds the
@@ -98,7 +92,7 @@ export function buildThresholds(cal) {
   // Frown gets its own, much lower bar: a small rise over the player's resting
   // face is enough, and a very expressive calibration pose must not push the
   // bar out of reach for everyday frowns.
-  const frownFloor = Math.max(0.09, base('frown') + 0.04);
+  const frownFloor = Math.max(0.05, base('frown') + 0.04);
   const frownCap = Math.max(frownFloor, 0.22);
   return {
     // 0.7 (not 0.8) so everyday poses do not have to be stronger than the ones
@@ -108,63 +102,77 @@ export function buildThresholds(cal) {
     // jawOpen is the gag's key signal; the floor stays low enough that an
     // uncalibrated open mouth is still recognised. Calibration raises it.
     vomitJawOpen: Math.max((b.vomit?.jaw ?? 0) * 0.85, base('jaw') + 0.25, 0.4),
-    vomitTongue: Math.max((b.vomit?.tongue ?? 0) * 0.6, base('tongue') + 0.08, 0.12),
-    // Calibrated from the dedicated Lidded step.
-    blink: Math.max((b.blink?.blink ?? 0) * 0.7, 0.5),
+    // Calibrated from the dedicated eyes-closed step.
+    blink: Math.max((b.blink?.blink ?? 0) * 0.7, 0.8),
   };
 }
 
 // Eye closure is fully independent of the mouth: smiling, frowning or talking
 // while shutting your eyes cannot mask it.
-export function eyesClosed(categories, thresholds) {
+export function eyesClosed(categories, thresholds, geometry = null) {
   if (!categories || !thresholds) return false;
-  return both(
-    blendshapeScore(categories, BS.BLINK_L),
-    blendshapeScore(categories, BS.BLINK_R)
-  ) >= thresholds.blink;
+  return closedEyeChecks({ ...expressionScores(categories), eyeOpenness: geometry, eyeOpennessLimit: thresholds.eyeOpennessLimit ?? .05 }, thresholds).every((c) => c.passed);
 }
 
 // Classify the face for the HUD. Priority is by signal exclusivity, not by a
 // global score ranking:
-//   1. Gag       -> jawOpen (tongueOut only LOWERS the required jaw opening)
-//   2. Eyes shut -> eyeBlink L/R only (mouth signals are ignored entirely)
+//   1. Gag       -> calibrated wide jaw opening (a game gesture, not actual vomiting)
+//   2. Eyes shut -> each eyeBlink plus optional personal eyelid geometry
 //   3. Smile     -> mouthSmile L/R (must beat its own threshold)
-//   4. Frown     -> frownScore() (weak corners OR pressed lips)
-export function classifyExpression(categories, thresholds) {
-  if (!categories || !thresholds) return EXPRESSIONS.NEUTRAL;
-  const smile = both(blendshapeScore(categories, BS.SMILE_L), blendshapeScore(categories, BS.SMILE_R));
-  const frown = frownScore(categories);
-  const jaw = blendshapeScore(categories, BS.JAW);
-  const tongue = blendshapeScore(categories, BS.TONGUE);
-  const shut = eyesClosed(categories, thresholds);
-  const tongueOut = tongue >= thresholds.vomitTongue;
+//   4. Frown     -> frownScore() (mouth corners OR lowered brows)
+export function expressionScores(categories) {
+  return {
+    smile: both(blendshapeScore(categories, BS.SMILE_L), blendshapeScore(categories, BS.SMILE_R)),
+    frown: frownScore(categories),
+    jaw: blendshapeScore(categories, BS.JAW),
+    blink: both(blendshapeScore(categories, BS.BLINK_L), blendshapeScore(categories, BS.BLINK_R)),
+    blinkLeft: blendshapeScore(categories, BS.BLINK_L),
+    blinkRight: blendshapeScore(categories, BS.BLINK_R),
+  };
+}
 
-  // jawOpen drives the gag. Sticking the tongue out is a bonus that lowers the
-  // bar -- most people gag without actually sticking their tongue out, so it
-  // must NOT be a hard requirement.
-  const gagJaw = thresholds.vomitJawOpen - (tongueOut ? 0.15 : 0);
-  // A real gag (tongue out) may override closed eyes so the rescue/purge
-  // gesture still works. Otherwise closed eyes win over EVERY mouth shape:
-  // chatting / laughing / grimacing while defending no longer cancels it.
-  if (jaw >= gagJaw && (tongueOut || !shut)) return EXPRESSIONS.VOMIT;
-  if (shut) return EXPRESSIONS.BLINK;
-  if (smile >= thresholds.smile && smile >= frown + 0.05) return EXPRESSIONS.SMILE;
-  // A genuine smile already returned above. mouthSmile* carries a constant
-  // 0.1-0.2 resting bias on many faces, so requiring frown to beat smile (the
-  // old "+ 0.05" margin) swallowed almost every frown. Here we only need to
-  // know the player is not actually smiling.
-  if (frown >= thresholds.frown && smile < thresholds.smile) return EXPRESSIONS.FROWN;
-  return EXPRESSIONS.NEUTRAL;
+export function closedEyeChecks(scores, thresholds) {
+  return ['left', 'right'].map((side) => {
+    const value = scores.eyeOpenness?.[side];
+    return { label: `${side} eye openness`, left: value ?? Infinity, operator: '<=', right: scores.eyeOpennessLimit ?? .05,
+      passed: Number.isFinite(value) && value <= (scores.eyeOpennessLimit ?? .05) };
+  });
+}
+
+// The game and debugger share these checks so explanations cannot drift.
+export function evaluateExpression(scores, thresholds) {
+  const check = (label, left, operator, right) => ({
+    label, left, operator, right, passed: operator === '>=' ? left >= right : left < right,
+  });
+  const candidates = [
+    { expression: EXPRESSIONS.VOMIT, checks: [check('jaw', scores.jaw, '>=', thresholds.vomitJawOpen)] },
+    { expression: EXPRESSIONS.BLINK, checks: closedEyeChecks(scores, thresholds) },
+    { expression: EXPRESSIONS.SMILE, checks: [check('smile', scores.smile, '>=', thresholds.smile), check('smile vs refusal + 0.05', scores.smile, '>=', scores.frown + 0.05)] },
+    { expression: EXPRESSIONS.REFUSAL, checks: [check('refusal', scores.frown, '>=', thresholds.frown), check('smile below threshold', scores.smile, '<', thresholds.smile)] },
+  ];
+  for (const candidate of candidates) candidate.eligible = candidate.checks.every((c) => c.passed);
+  const expression = candidates.find((c) => c.eligible)?.expression || EXPRESSIONS.NEUTRAL;
+  candidates.push({ expression: EXPRESSIONS.NEUTRAL, eligible: expression === EXPRESSIONS.NEUTRAL, checks: [] });
+  for (const candidate of candidates) {
+    candidate.selected = candidate.expression === expression;
+    candidate.blockedBy = candidate.eligible && !candidate.selected ? expression : null;
+  }
+  return { expression, candidates };
+}
+
+export function classifyExpression(categories, thresholds, geometry = null) {
+  if (!categories || !thresholds) return EXPRESSIONS.NEUTRAL;
+  return evaluateExpression({ ...expressionScores(categories), eyeOpenness: geometry, eyeOpennessLimit: thresholds.eyeOpennessLimit ?? .05 }, thresholds).expression;
 }
 
 // At the spoon's arrival we only care about accept / reject / defend / neutral.
 // `holdOk` comes from the game loop: eyes must stay shut for a short window, so
 // a natural blink on the arrival frame cannot fake a defense. Defaults to true
 // for callers/tests that classify a single frame in isolation.
-export function intentFromExpression(categories, thresholds, holdOk = true) {
-  const expr = classifyExpression(categories, thresholds);
+export function intentFromExpression(categories, thresholds, holdOk = true, geometry = null) {
+  const expr = classifyExpression(categories, thresholds, geometry);
   if (expr === EXPRESSIONS.SMILE) return INTENT.ACCEPT;
-  if (expr === EXPRESSIONS.FROWN) return INTENT.REJECT;
+  if (expr === EXPRESSIONS.REFUSAL) return INTENT.REJECT;
   if (expr === EXPRESSIONS.BLINK) return holdOk ? INTENT.DEFEND : INTENT.NEUTRAL;
   return INTENT.NEUTRAL;
 }

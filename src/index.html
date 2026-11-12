@@ -36,11 +36,73 @@
   <div id="overlay" class="overlay">
     <div class="panel" id="panel">
       <h1>Expression Feeding</h1>
-      <p>Smile to accept, frown to refuse, gag to purge. The camera is processed locally and never leaves your device.</p>
+      <p>Smile to accept, lower your brows or mouth corners to refuse, open your mouth to purge. The camera is processed locally and never leaves your device.</p>
       <button id="startBtn" type="button">Start &amp; Calibrate (needs camera)</button>
       <button id="demoBtn" type="button">Keyboard Demo (no camera)</button>
+      <button id="faceDebugBtn" type="button">Face Debug</button>
+      <p id="gameSettingsStatus"></p>
     </div>
   </div>
 </main>
+<section id="faceDebug" class="face-debug" hidden aria-label="Face Debug">
+  <header class="debug-header"><h1>Face Debug</h1><div class="debug-header-actions"><button id="debugLanguage" type="button" aria-label="Switch debug language">中文</button><button id="debugBack" type="button">Back to menu</button></div></header>
+  <p>MediaPipe 0.10.18 · single face · Developer baseline + session player correction</p>
+  <div class="debug-layout">
+    <div class="debug-sidebar">
+      <video id="debugCam" autoplay playsinline muted aria-label="Camera preview"></video>
+      <p id="debugStatus" role="status">Waiting to start</p>
+      <dl class="debug-metrics">
+        <dt>Face / expression</dt><dd id="debugExpression">—</dd>
+        <dt>Inference time</dt><dd id="debugDuration">—</dd>
+        <dt>Detection FPS</dt><dd id="debugFps">—</dd>
+        <dt>Session elapsed</dt><dd id="debugElapsed">0.0 s</dd>
+        <dt>Last inference</dt><dd id="debugTime">—</dd>
+      </dl>
+    </div>
+    <div class="debug-content">
+      <h2>Calibration</h2>
+      <p>Five shared calibration steps, 1.5 seconds each. Median/P75 estimates player offset and amplitude without changing the baseline. Gain is limited to ±25%.</p>
+      <button id="debugCalibrate" type="button" disabled>Start calibration</button>
+      <img id="debugCalImage" class="calibration-image" alt="" hidden>
+      <button id="debugCalSample" type="button" hidden>Sample this step</button>
+      <button id="debugCalCancel" type="button" hidden>Cancel calibration</button>
+      <p id="debugCalStatus" role="status"></p>
+      <label>Preview mode <select id="debugProfileMode"><option value="baseline">Baseline only</option><option value="player" disabled>Baseline + player correction</option></select></label>
+      <details><summary>Player correction</summary><pre id="debugProfile" class="debug-brow"></pre></details>
+      <h2>Recognition and tuning</h2>
+      <p>Corrected signal × weight = decision score. The top three signals are highlighted.</p>
+      <button id="debugApply" type="button">Save developer baseline</button>
+      <button id="debugReset" type="button">Reset developer baseline</button>
+      <section class="debug-special" aria-labelledby="debugSpecialTitle">
+        <h2 id="debugSpecialTitle">Special States</h2>
+        <label><span>Blink protect time (ms)</span> <input id="debugEyeHold" type="number" aria-label="Blink protect time (ms)" min="200" max="1500" step="any" value="500"></label>
+        <label><span>Eye openness limit</span> <input id="debugEyeOpenness" type="number" min="0" max="0.5" step="any" value="0.05" aria-label="Eye openness limit"></label>
+        <p id="debugEyeProgress">—</p>
+      </section>
+      <p id="debugSettingStatus"></p>
+      <div class="debug-table-wrap debug-decisions"><table><thead><tr><th>Action / rank</th><th>Raw</th><th>Corrected</th><th>Weight</th><th>Weighted</th><th>Threshold</th><th>Gate</th><th>Status</th><th>Checks / reason</th></tr></thead><tbody id="debugSignals"></tbody></table></div>
+      <details><summary>Raw signals</summary>
+        <div class="debug-table-wrap"><table><thead><tr><th>Signal</th><th>Value</th></tr></thead><tbody id="debugRaw"></tbody></table></div>
+      </details>
+      <h2>Event log</h2>
+      <pre id="debugLog" class="debug-log" aria-label="Timestamped debug events"></pre>
+  <section class="debug-state-guide" aria-labelledby="debugStateGuideTitle">
+    <h2 id="debugStateGuideTitle">States and trigger conditions</h2>
+    <p>Decision score = corrected signal × baseline weight. Baseline-only mode uses raw signals. Thresholds follow the current configuration.</p>
+    <div class="debug-table-wrap"><table>
+      <thead><tr><th>State</th><th>Illustration</th><th>Gesture</th><th>Trigger</th><th>Priority / game behavior</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">VOMIT</th><td><img class="state-face" src="assets/calibration/jaw.svg" alt="Mouth open"></td><td>Open your mouth wide.</td><td>Jaw opening after player correction and baseline weighting reaches the vomit threshold.</td><td>Highest priority. A new mouth-opening gesture is required during rescue; holding it does not repeatedly trigger.</td></tr>
+        <tr><th scope="row">EYES CLOSED</th><td><img class="state-face" src="assets/calibration/blink.svg" alt="Eyes closed"></td><td>Keep both eyes closed.</td><td>Both raw eye openness ratios must be at or below the configured limit (default 0.05).</td><td>Selected if vomit is inactive. Defense requires continuous closure for the configured time (default 500 ms).</td></tr>
+        <tr><th scope="row">SMILE</th><td><img class="state-face" src="assets/calibration/smile.svg" alt="Smile"></td><td>Raise both mouth corners.</td><td>Smile score reaches its threshold and is at least refusal score + 0.05.</td><td>Selected if vomit and eyes closed are inactive.</td></tr>
+        <tr><th scope="row">REFUSAL</th><td><img class="state-face" src="assets/calibration/frown.svg" alt="Refusal"></td><td>Lower your brows or mouth corners.</td><td>Raw refusal = max(average brow down, average mouth-corner down). Corrected, weighted refusal reaches its threshold while smile remains below its threshold.</td><td>Selected if vomit, eyes closed and smile are inactive.</td></tr>
+        <tr><th scope="row">NEUTRAL</th><td><img class="state-face" src="assets/calibration/neutral.svg" alt="Neutral"></td><td>Relax your face.</td><td>A face is detected, but none of the four actions meets all conditions.</td><td>Fallback classification, not an independent model score.</td></tr>
+        <tr><th scope="row">NO FACE</th><td><img class="state-face" src="assets/calibration/none.svg" alt="No face"></td><td>Face is outside the frame or cannot be detected.</td><td>An actual inference returns no valid face.</td><td>Not ranked. Gameplay reuses the latest valid face briefly and marks it lost after 400 ms.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+    </div>
+  </div>
+</section>
 <script type="module" src="app.js"></script>
 </body></html>

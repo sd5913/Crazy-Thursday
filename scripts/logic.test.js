@@ -2,9 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   nextMessage,
-  classifyExpression,
-  eyesClosed,
-  intentFromExpression,
+  classifyExpression as classifyRaw,
+  eyesClosed as eyesClosedRaw,
+  intentFromExpression as intentRaw,
   judge,
   buildThresholds,
   speedForLevel,
@@ -16,6 +16,15 @@ import {
   SCORING,
 } from '../src/logic.js';
 
+// Geometry fixtures are independent inputs; Blink scores alone cannot close eyes.
+const geometry = (c) => {
+  const score = (name) => c?.find((v) => v.categoryName === name)?.score || 0;
+  return { left: score('eyeBlinkLeft') >= .8 ? .03 : .2, right: score('eyeBlinkRight') >= .8 ? .03 : .2 };
+};
+const classifyExpression = (c,t) => classifyRaw(c,t,geometry(c));
+const eyesClosed = (c,t) => eyesClosedRaw(c,t,geometry(c));
+const intentFromExpression = (c,t,h=true) => intentRaw(c,t,h,geometry(c));
+
 test('legacy signal message still works', () => {
   assert.match(nextMessage(1), /Signal 1 sent/);
   assert.match(nextMessage(2), /Signal 2 sent/);
@@ -26,25 +35,34 @@ const cats = (over) => {
     mouthSmileLeft: 0, mouthSmileRight: 0,
     mouthFrownLeft: 0, mouthFrownRight: 0,
     mouthPressLeft: 0, mouthPressRight: 0,
-    jawOpen: 0, tongueOut: 0,
-    eyeBlinkLeft: 0, eyeBlinkRight: 0,
+    jawOpen: 0,
+    eyeBlinkLeft: 0, eyeBlinkRight: 0, eyeSquintLeft: 1, eyeSquintRight: 1,
   };
   return Object.entries({ ...base, ...over }).map(([categoryName, score]) => ({ categoryName, score }));
 };
 
 const TH = buildThresholds({
-  neutral: { smile: 0.05, frown: 0.05, jaw: 0.05, tongue: 0.0 },
-  smile: { smile: 0.9, frown: 0.1, jaw: 0.1, tongue: 0.0 },
-  frown: { smile: 0.1, frown: 0.8, jaw: 0.1, tongue: 0.0 },
-  vomit: { smile: 0.1, frown: 0.1, jaw: 0.95, tongue: 0.7 },
+  neutral: { smile: 0.05, frown: 0.05, jaw: 0.05 },
+  smile: { smile: 0.9, frown: 0.1, jaw: 0.1 },
+  frown: { smile: 0.1, frown: 0.8, jaw: 0.1 },
+  vomit: { smile: 0.1, frown: 0.1, jaw: 0.95 },
 });
 
 test('classifyExpression maps each pose', () => {
   assert.equal(classifyExpression(cats({ mouthSmileLeft: 0.9, mouthSmileRight: 0.9 }), TH), EXPRESSIONS.SMILE);
-  assert.equal(classifyExpression(cats({ mouthFrownLeft: 0.8, mouthFrownRight: 0.8 }), TH), EXPRESSIONS.FROWN);
-  assert.equal(classifyExpression(cats({ jawOpen: 0.95, tongueOut: 0.7 }), TH), EXPRESSIONS.VOMIT);
+  assert.equal(classifyExpression(cats({ mouthFrownLeft: 0.8, mouthFrownRight: 0.8 }), TH), EXPRESSIONS.REFUSAL);
+  assert.equal(classifyExpression(cats({ jawOpen: 0.95 }), TH), EXPRESSIONS.VOMIT);
   assert.equal(classifyExpression(cats({ jawOpen: 0.98 }), TH), EXPRESSIONS.VOMIT); // wider than calibrated open, no tongue
   assert.equal(classifyExpression(cats({}), TH), EXPRESSIONS.NEUTRAL);
+  assert.equal(classifyExpression(null, TH), EXPRESSIONS.NEUTRAL);
+});
+
+test('gag uses only calibrated jaw opening, including with closed eyes', () => {
+  const shut = { eyeBlinkLeft: 1, eyeBlinkRight: 1 };
+  assert.equal(classifyExpression(cats({ jawOpen: TH.vomitJawOpen }), TH), EXPRESSIONS.VOMIT);
+  assert.equal(classifyExpression(cats({ ...shut, jawOpen: TH.vomitJawOpen }), TH), EXPRESSIONS.VOMIT);
+  assert.equal(classifyExpression(cats({ ...shut, jawOpen: TH.vomitJawOpen - 0.01 }), TH), EXPRESSIONS.BLINK);
+  assert.equal(classifyExpression(cats({ jawOpen: 0.3 }), TH), EXPRESSIONS.NEUTRAL);
   assert.equal(classifyExpression(null, TH), EXPRESSIONS.NEUTRAL);
 });
 
@@ -97,8 +115,8 @@ test('closed eyes win over mouth signals (chatting / laughing while defending)',
   assert.equal(classifyExpression(cats({ ...shut, mouthFrownLeft: 0.8, mouthFrownRight: 0.8 }), TH), EXPRESSIONS.BLINK);
   assert.equal(classifyExpression(cats({ ...shut, jawOpen: 0.6 }), TH), EXPRESSIONS.BLINK);
   assert.equal(intentFromExpression(cats({ ...shut, mouthSmileLeft: 0.9, mouthSmileRight: 0.9 }), TH), INTENT.DEFEND);
-  // Only a real gag (open jaw AND tongue out) may override closed eyes.
-  assert.equal(classifyExpression(cats({ ...shut, jawOpen: 0.95, tongueOut: 0.7 }), TH), EXPRESSIONS.VOMIT);
+  // Deliberate wide opening also works with closed eyes, without a tongue signal.
+  assert.equal(classifyExpression(cats({ ...shut, jawOpen: 0.95 }), TH), EXPRESSIONS.VOMIT);
 });
 
 test('each expression relies on its own exclusive signals', () => {
@@ -118,16 +136,17 @@ test('each expression relies on its own exclusive signals', () => {
 // down to NEUTRAL (that was the bug when both() used min plus high floors).
 test('everyday-intensity poses stay recognisable after calibration', () => {
   const realTh = buildThresholds({
-    neutral: { smile: 0.05, frown: 0.03, jaw: 0.02, tongue: 0, blink: 0.08 },
-    smile: { smile: 0.65, frown: 0.02, jaw: 0.08, tongue: 0, blink: 0.1 },
-    frown: { smile: 0.02, frown: 0.28, jaw: 0.05, tongue: 0, blink: 0.1 },
-    vomit: { smile: 0.02, frown: 0.05, jaw: 0.75, tongue: 0.15, blink: 0.15 },
-    blink: { smile: 0.03, frown: 0.03, jaw: 0.03, tongue: 0, blink: 0.85 },
+    neutral: { smile: 0.05, frown: 0.03, jaw: 0.02, blink: 0.08 },
+    smile: { smile: 0.65, frown: 0.02, jaw: 0.08, blink: 0.1 },
+    frown: { smile: 0.02, frown: 0.28, jaw: 0.05, blink: 0.1 },
+    vomit: { smile: 0.02, frown: 0.05, jaw: 0.75, blink: 0.15 },
+    blink: { smile: 0.03, frown: 0.03, jaw: 0.03, blink: 0.85 },
   });
   assert.equal(classifyExpression(cats({ mouthSmileLeft: 0.55, mouthSmileRight: 0.5 }), realTh), EXPRESSIONS.SMILE);
-  assert.equal(classifyExpression(cats({ mouthFrownLeft: 0.22, mouthFrownRight: 0.18 }), realTh), EXPRESSIONS.FROWN);
-  assert.equal(classifyExpression(cats({ jawOpen: 0.7, tongueOut: 0.05 }), realTh), EXPRESSIONS.VOMIT);
-  assert.equal(classifyExpression(cats({ eyeBlinkLeft: 0.75, eyeBlinkRight: 0.65 }), realTh), EXPRESSIONS.BLINK);
+  assert.equal(classifyExpression(cats({ mouthFrownLeft: 0.22, mouthFrownRight: 0.18 }), realTh), EXPRESSIONS.REFUSAL);
+  assert.equal(classifyExpression(cats({ jawOpen: 0.7 }), realTh), EXPRESSIONS.VOMIT);
+  assert.equal(classifyExpression(cats({ eyeBlinkLeft: 0.75, eyeBlinkRight: 0.65 }), realTh), EXPRESSIONS.NEUTRAL);
+  assert.equal(classifyExpression(cats({ eyeBlinkLeft: 0.85, eyeBlinkRight: 0.85 }), realTh), EXPRESSIONS.BLINK);
   assert.equal(classifyExpression(cats({}), realTh), EXPRESSIONS.NEUTRAL);
 });
 
@@ -136,19 +155,19 @@ test('everyday-intensity poses stay recognisable after calibration', () => {
 // comparison or by a high calibrated bar.
 test('mild frowns and tight-lipped refusals stay recognisable', () => {
   const realTh = buildThresholds({
-    neutral: { smile: 0.12, frown: 0.03, jaw: 0.02, tongue: 0, blink: 0.08 },
-    smile: { smile: 0.65, frown: 0.02, jaw: 0.08, tongue: 0, blink: 0.1 },
-    frown: { smile: 0.02, frown: 0.28, jaw: 0.05, tongue: 0, blink: 0.1 },
-    vomit: { smile: 0.02, frown: 0.05, jaw: 0.75, tongue: 0.15, blink: 0.15 },
-    blink: { smile: 0.03, frown: 0.03, jaw: 0.03, tongue: 0, blink: 0.85 },
+    neutral: { smile: 0.12, frown: 0.03, jaw: 0.02, blink: 0.08 },
+    smile: { smile: 0.65, frown: 0.02, jaw: 0.08, blink: 0.1 },
+    frown: { smile: 0.02, frown: 0.28, jaw: 0.05, blink: 0.1 },
+    vomit: { smile: 0.02, frown: 0.05, jaw: 0.75, blink: 0.15 },
+    blink: { smile: 0.03, frown: 0.03, jaw: 0.03, blink: 0.85 },
   });
   // Weak corners plus a constant resting smile bias: previously NEUTRAL.
   assert.equal(
     classifyExpression(cats({ mouthFrownLeft: 0.18, mouthFrownRight: 0.14, mouthSmileLeft: 0.12, mouthSmileRight: 0.12 }), realTh),
-    EXPRESSIONS.FROWN
+    EXPRESSIONS.REFUSAL
   );
   // Pressed lips (a common "no") with no mouthFrown signal at all.
-  assert.equal(classifyExpression(cats({ mouthPressLeft: 0.55, mouthPressRight: 0.45 }), realTh), EXPRESSIONS.FROWN);
+  assert.equal(classifyExpression(cats({ mouthPressLeft: 0.55, mouthPressRight: 0.45 }), realTh), EXPRESSIONS.NEUTRAL);
   // A real smile still wins; a neutral face with a smile bias stays neutral.
   assert.equal(classifyExpression(cats({ mouthSmileLeft: 0.6, mouthSmileRight: 0.6 }), realTh), EXPRESSIONS.SMILE);
   assert.equal(classifyExpression(cats({ mouthSmileLeft: 0.12, mouthSmileRight: 0.12 }), realTh), EXPRESSIONS.NEUTRAL);

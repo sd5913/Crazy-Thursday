@@ -1,29 +1,33 @@
+import { createEyeHold, protectedEyeExpression } from './eye-hold.js';
 // Game orchestration: camera + face detection + feeding state machine.
 // Pure rules live in logic.js; this file only wires detection to the DOM.
 
-import { initFaceLandmarker, detectFace, openCamera } from './face.js';
+import { initFaceLandmarker, detectFace, detectFaceFrame, openCamera } from './face.js';
 import {
   EXPRESSIONS,
   INTENT,
   OUTCOME,
-  classifyExpression,
-  frownScore,
-  intentFromExpression,
-  eyesClosed,
   judge,
-  buildThresholds,
   speedForLevel,
   applyRescue,
   randomItem,
   SCORING,
 } from './logic.js';
 
+import {
+  classifyGameExpression as classifyExpression,
+  gameIntentFromExpression as intentFromExpression,
+  gameEyesClosed as eyesClosed,
+  getBaseline, setPlayerProfile,
+} from './face-settings.js';
+
 const RESULT_MS = 900;
 const RESCUE_MS = 2500;
-const SAMPLE_MS = 1500;
+import { FACE_LABELS } from './face-labels.js';
+import { createFaceCalibration } from './face-calibration.js';
 // Eyes must stay shut for this long before the spoon lands. A natural blink
 // (~100ms) is too short, so it can no longer fake a defense.
-const DEFEND_HOLD_MS = 150;
+
 // rAF runs at 60-144fps while the webcam is usually ~30fps, so most frames
 // have no fresh camera data. Only report NO FACE after this long without ANY
 // valid detection; brief gaps reuse the last good frame instead.
@@ -39,15 +43,16 @@ const NURSE_LINES = [
 
 // Badge renders two lines: a big primary label + a small secondary note.
 const BADGE_TEXT = {
-  [EXPRESSIONS.SMILE]: ['SMILE', 'accepting'],
-  [EXPRESSIONS.FROWN]: ['FROWN', 'refusing'],
-  [EXPRESSIONS.VOMIT]: ['GAG', 'vomiting'],
-  [EXPRESSIONS.BLINK]: ['LIDDED', 'defending'],
-  [EXPRESSIONS.NEUTRAL]: ['RELAX', 'neutral'],
-  none: ['NO FACE', 'not detected'],
+  [EXPRESSIONS.SMILE]: [FACE_LABELS.smile, 'accepting'],
+  [EXPRESSIONS.REFUSAL]: [FACE_LABELS.refusal, 'refusing'],
+  [EXPRESSIONS.VOMIT]: [FACE_LABELS.vomit, 'purging'],
+  [EXPRESSIONS.BLINK]: [FACE_LABELS.blink, 'defending'],
+  [EXPRESSIONS.NEUTRAL]: [FACE_LABELS.neutral, 'no action'],
+  none: [FACE_LABELS.none, 'not detected'],
 };
 
 export async function startGame(mode = 'camera', opts = {}) {
+  const eyeHold = createEyeHold();
   const el = {
     video: document.getElementById('cam'),
     overlay: document.getElementById('overlay'),
@@ -119,7 +124,7 @@ export async function startGame(mode = 'camera', opts = {}) {
 
   // --- keyboard demo mode (no camera) -------------------------------------
   const isDemo = mode === 'demo';
-  const KEY_MAP = { s: 'smile', f: 'frown', v: 'vomit', b: 'blink' };
+  const KEY_MAP = { s: 'smile', f: 'refusal', v: 'vomit', b: 'blink' };
   let demoExpr = null;
   if (isDemo) {
     window.addEventListener('keydown', (e) => {
@@ -135,11 +140,11 @@ export async function startGame(mode = 'camera', opts = {}) {
     });
   }
   function demoCategories(expr) {
-    const base = { mouthSmileLeft: 0, mouthSmileRight: 0, mouthFrownLeft: 0, mouthFrownRight: 0, jawOpen: 0, tongueOut: 0, eyeBlinkLeft: 0, eyeBlinkRight: 0 };
+    const base = { mouthSmileLeft: 0, mouthSmileRight: 0, mouthFrownLeft: 0, mouthFrownRight: 0, jawOpen: 0, eyeBlinkLeft: 0, eyeBlinkRight: 0 };
     if (expr === 'smile') Object.assign(base, { mouthSmileLeft: 1, mouthSmileRight: 1 });
-    else if (expr === 'frown') Object.assign(base, { mouthFrownLeft: 1, mouthFrownRight: 1 });
-    else if (expr === 'vomit') Object.assign(base, { jawOpen: 1, tongueOut: 1 });
-    else if (expr === 'blink') Object.assign(base, { eyeBlinkLeft: 1, eyeBlinkRight: 1 });
+    else if (expr === 'refusal') Object.assign(base, { mouthFrownLeft: 1, mouthFrownRight: 1 });
+    else if (expr === 'vomit') Object.assign(base, { jawOpen: 1 });
+    else if (expr === 'blink') Object.assign(base, { eyeBlinkLeft: 1, eyeBlinkRight: 1, eyeSquintLeft: 1, eyeSquintRight: 1 });
     return Object.entries(base).map(([categoryName, score]) => ({ categoryName, score }));
   }
   function currentCategories() {
@@ -156,66 +161,52 @@ export async function startGame(mode = 'camera', opts = {}) {
   }
 
   // --- calibration ---------------------------------------------------------
-  function aggregate(categories) {
-    const score = (name) => {
-      if (!categories) return 0;
-      for (const c of categories) if (c.categoryName === name) return c.score;
-      return 0;
-    };
-    // Both-sided averages match classifyExpression's both(); frown uses the
-    // shared frownScore() so calibration measures exactly the signal judgement
-    // later reads (weak corners + pressed lips).
-    return {
-      smile: (score('mouthSmileLeft') + score('mouthSmileRight')) / 2,
-      frown: frownScore(categories),
-      jaw: score('jawOpen'),
-      tongue: score('tongueOut'),
-      blink: (score('eyeBlinkLeft') + score('eyeBlinkRight')) / 2,
-    };
-  }
-
-  function sampleMax(durationMs) {
-    return new Promise((resolve) => {
-      const max = { smile: 0, frown: 0, jaw: 0, tongue: 0, blink: 0 };
-      const end = performance.now() + durationMs;
-      const tick = () => {
-        const a = aggregate(detectFace(el.video));
-        for (const k of Object.keys(max)) max[k] = Math.max(max[k], a[k]);
-        if (performance.now() < end) requestAnimationFrame(tick);
-        else resolve(max);
-      };
-      requestAnimationFrame(tick);
-    });
-  }
-
   async function calibrate() {
-    const cal = {};
-    const steps = [
-      { key: 'neutral', title: 'Calibration 1/5 · Relax', hint: 'Keep a neutral face. Click to sample.' },
-      { key: 'smile', title: 'Calibration 2/5 · Smile', hint: 'The face you make for food you like. Click to sample.' },
-      { key: 'frown', title: 'Calibration 3/5 · Frown', hint: 'Pull the mouth corners down, or press your lips tight. Click to sample.' },
-      { key: 'vomit', title: 'Calibration 4/5 · Gag', hint: 'The face you make for actual vomit. Click to sample.' },
-      { key: 'blink', title: 'Calibration 5/5 · Lidded', hint: 'Close both eyes and hold. Click to sample.' },
-    ];
-    for (const step of steps) {
-      await new Promise((done) => {
-        showOverlay(
-          `<h1>${step.title}</h1><p>${step.hint}</p>` +
-          `<button id="calBtn" type="button">Start sampling</button>`
-        );
-        document.getElementById('calBtn').addEventListener('click', async () => {
-          setSubtitle('Sampling…');
-          cal[step.key] = await sampleMax(SAMPLE_MS);
+    const baseline = getBaseline();
+    const calibration = createFaceCalibration(baseline);
+    await new Promise((done) => {
+      function render(status) {
+        if (status.completed) {
+          state.thresholds = { baseline, profile: status.profile };
+          setPlayerProfile(status.profile);
           done();
-        });
-      });
-    }
-    state.thresholds = buildThresholds(cal);
+          return;
+        }
+        showOverlay(
+          `<h1>${status.step.title}</h1>` +
+          `<img class="calibration-image" src="${status.step.image}" alt="${status.step.imageAlt}">` +
+          `<p>${status.step.hint}</p>` +
+          (status.error ? `<p>${status.error}</p>` : '') +
+          `<button id="calBtn" type="button">Start sampling</button>` +
+          `<button id="skipCalBtn" type="button">Skip</button>`
+        );
+        document.getElementById('skipCalBtn').addEventListener('click', () => {
+          state.thresholds = { baseline, profile: null };
+          setPlayerProfile(null);
+          done();
+        }, { once: true });
+        document.getElementById('calBtn').addEventListener('click', (event) => {
+          event.currentTarget.disabled = true;
+          document.getElementById('skipCalBtn').disabled = true;
+          calibration.startSample(performance.now());
+          function tick(now) {
+            const result = detectFaceFrame(el.video);
+            const next = calibration.feed(result.inferred && result.freshVideoFrame !== false ? result.categories : null, now, result.eyeGeometry);
+            setSubtitle(`Sampling… ${(next.remainingMs / 1000).toFixed(1)} s`);
+            if (next.sampling) requestAnimationFrame(tick);
+            else render(next);
+          }
+          requestAnimationFrame(tick);
+        }, { once: true });
+      }
+      render(calibration.snapshot());
+    });
   }
 
   // --- round flow ----------------------------------------------------------
   function startRound() {
     state.round += 1;
+    eyeHold.reset();
     state.closedSince = 0; // each serve starts a fresh eyes-shut hold
     state.item = randomItem();
     el.item.src = state.item.image;
@@ -457,9 +448,11 @@ export async function startGame(mode = 'camera', opts = {}) {
 
   // --- main loop -----------------------------------------------------------
   function loop(now) {
-    const fresh = currentCategories();
+    const detection = isDemo ? { inferred: true, categories: currentCategories(), eyeGeometry: { left: demoExpr === 'blink' ? 0 : 0.3, right: demoExpr === 'blink' ? 0 : 0.3 } } : detectFaceFrame(el.video);
+    const fresh = detection.categories;
     if (fresh) {
       state.lastCategories = fresh;
+      state.eyeGeometry = detection.eyeGeometry;
       state.lastFaceAt = now;
     }
     // A missing result usually means "no new webcam frame yet", not "no face".
@@ -468,7 +461,9 @@ export async function startGame(mode = 'camera', opts = {}) {
     const faceLost = !state.lastFaceAt || now - state.lastFaceAt > FACE_LOST_MS;
     if (faceLost) state.closedSince = 0;
     const face = faceLost ? null : state.lastCategories;
-    const expr = classifyExpression(face, state.thresholds);
+    const hold = eyeHold.update({ inferred: detection.inferred, closed: detection.freshVideoFrame !== false && !!fresh && eyesClosed(fresh, state.thresholds, detection.eyeGeometry), now, durationMs: state.thresholds?.baseline.eyeHoldMs ?? 500 });
+    let expr = classifyExpression(face, state.thresholds, state.eyeGeometry);
+    expr = protectedEyeExpression(expr, isDemo || hold.ready);
     setBadge(faceLost ? 'none' : expr);
 
     if (state.phase === 'serving') {
@@ -478,17 +473,8 @@ export async function startGame(mode = 'camera', opts = {}) {
       // Fade the hand+spoon to opaque quickly (within the first 25% of the
       // serve), then hold. The scale motion above is unchanged.
       el.spoon.style.opacity = String(Math.min(1, progress * 4));
-      // Continuous eyes-shut hold. Reused frames keep the hold alive across
-      // camera gaps; only a real frame showing open eyes breaks it.
-      const shut = eyesClosed(face, state.thresholds);
-      if (shut) {
-        if (!state.closedSince) state.closedSince = now;
-      } else if (face) {
-        state.closedSince = 0;
-      }
-      const held = state.closedSince > 0 && now - state.closedSince >= DEFEND_HOLD_MS;
-      const holdOk = isDemo || held; // demo keys stay instantly responsive
-      state.lastIntent = intentFromExpression(face, state.thresholds, holdOk);
+      const holdOk = isDemo || hold.ready;
+      state.lastIntent = intentFromExpression(face, state.thresholds, holdOk, state.eyeGeometry);
       if (progress >= 1) resolveServe();
     } else if (state.phase === 'rescue') {
       if (!state.rescueResolved) {
@@ -521,9 +507,9 @@ export async function startGame(mode = 'camera', opts = {}) {
   // --- boot ----------------------------------------------------------------
   try {
     if (isDemo) {
-      state.thresholds = buildThresholds(null); // use literature floors; no calibration
+      state.thresholds = { baseline: getBaseline(), profile: null }; // demo bypasses player correction
       hideOverlay();
-      setSubtitle('Keys: S accept · F refuse · V gag · B defend(lidded) · release = blank');
+      setSubtitle('S smile · F refusal · V vomit · B eyes closed · release = neutral');
       state.startTime = performance.now();
       startRound();
       requestAnimationFrame(loop);
