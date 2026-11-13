@@ -181,8 +181,10 @@ export async function startGame(mode = 'camera', opts = {}) {
           `<img class="calibration-image" src="${status.step.image}" alt="${status.step.imageAlt}"></div>` +
           `<p>${status.step.hint}</p>` +
           (status.error ? `<p>${status.error}</p>` : '') +
+          `<div class="card-actions calibration-actions">` +
           `<button id="calBtn" type="button">Start sampling</button>` +
-          `<button id="skipCalBtn" type="button">Skip</button>`
+          `<button id="skipCalBtn" type="button">Skip</button>` +
+          `</div>`
         );
         document.getElementById('skipCalBtn').addEventListener('click', () => {
           state.thresholds = { baseline, profile: null };
@@ -519,7 +521,7 @@ export async function startGame(mode = 'camera', opts = {}) {
     if (isDemo) {
       state.thresholds = { baseline: getBaseline(), profile: null }; // demo bypasses player correction
       hideOverlay();
-      setSubtitle('S smile · F refusal · V vomit · B eyes closed · release = neutral');
+      setSubtitle('S smile · F refusal · V vomit · B lidded · release = relaxed');
       state.startTime = performance.now();
       startRound();
       requestAnimationFrame(loop);

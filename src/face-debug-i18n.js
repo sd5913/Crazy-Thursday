@@ -49,7 +49,7 @@ export const DEBUG_TRANSLATIONS = [
   ['Action / rank', '动作 / 排名'], ['Raw', '原值'], ['Corrected', '玩家校正值'], ['Weight', '标准权重'], ['Weighted', '判定值'], ['Threshold', '标准阈值'], ['Gate', '达标'], ['Status', '最终状态'], ['Checks / reason', '判定原因'],
   ['Raw signals', '原始信号'], ['Signal', '信号'], ['Value', '数值'], ['Event log', '事件日志'],
   ['States and trigger conditions', '状态与触发条件'], ['State', '状态'], ['Illustration', '示意图'], ['Gesture', '动作'], ['Trigger', '触发条件'], ['Priority / game behavior', '优先级 / 游戏行为'],
-  ['Mouth open', '张嘴'], ['Eyes closed', '闭眼'], ['Smile', '微笑'], ['Refusal', '拒绝'], ['Neutral', '中性'], ['No face', '无脸'], ['weight', '权重'], ['threshold', '阈值'], ['SMILE', '微笑'], ['REFUSAL', '拒绝'], ['VOMIT', '呕吐'], ['EYES CLOSED', '闭眼'], ['NEUTRAL', '中性'], ['NO FACE', '无脸'], ['WAITING', '等待识别'], ['ERROR', '错误'],
+  ['Mouth open', '张嘴'], ['Eyes closed', '闭眼'], ['Lidded', '闭眼'], ['Smile', '微笑'], ['Refusal', '拒绝'], ['Neutral', '中性'], ['Relaxed', '放松'], ['No face', '无脸'], ['weight', '权重'], ['threshold', '阈值'], ['SMILE', '微笑'], ['REFUSAL', '拒绝'], ['VOMIT', '呕吐'], ['LIDDED', '闭眼'], ['RELAXED', '放松'], ['NO FACE', '无脸'], ['WAITING', '等待识别'], ['ERROR', '错误'],
   ['SELECTED', '已选中'], ['NOT SELECTED', '未选中'], ['OVERRIDDEN', '被优先级覆盖'], ['NOT OUTPUT', '未输出'], ['PASS', '通过'], ['BELOW', '未达标'], ['FAIL', '失败'],
   ['Camera running', '摄像头运行中'], ['Opening camera…', '正在开启摄像头…'], ['Loading face model…', '正在加载模型…'], ['Waiting for camera and model', '等待摄像头和模型'],
   ['No compatible player correction. Calibrate to compare.', '没有匹配的玩家校正，请先校准'],
@@ -65,14 +65,14 @@ export const DEBUG_TRANSLATIONS = [
   ['Applied to game for this page. Storage unavailable: refresh will lose settings.', '已应用，存储不可用，刷新后丢失'],
   ['Default developer baseline restored. Player correction cleared; recalibrate.', '已恢复默认基准并清除玩家校正，请重新校准'],
   ['Loaded developer baseline. Player correction is separate.', '已加载开发基准，玩家校正独立计算'], ['Default developer baseline. Player calibration runs when starting the game.', '使用默认开发基准，开始游戏时进行玩家校准'],
-  ['Keep a neutral face. Click to sample.', '保持自然放松，点击采样'], ['Smile and hold. Click to sample.', '保持微笑，点击采样'], ['Lower your eyebrows or pull the mouth corners down, and hold.', '压低眉毛或嘴角，保持动作'], ['Open your mouth wide and hold. Click to sample.', '张大嘴并保持，点击采样'], ['Close both eyes and hold. Click to sample.', '闭合双眼并保持，点击采样'],
-  ['Not enough fresh face samples (need 12 frames over 800 ms). Face the camera and retry.', '有效样本不足（至少12帧、覆盖800毫秒），请面对镜头重试'], ['Action is not distinct enough from relaxed face. Hold the target pose and retry.', '动作与放松状态区分不足，请保持动作重试'],
+  ['Keep a relaxed face. Click to sample.', '保持自然放松，点击采样'], ['Smile and hold. Click to sample.', '保持微笑，点击采样'], ['Lower your eyebrows or pull the mouth corners down, and hold.', '压低眉毛或嘴角，保持动作'], ['Open your mouth wide and hold. Click to sample.', '张大嘴并保持，点击采样'], ['Close both eyes and hold. Click to sample.', '闭合双眼并保持，点击采样'],
+  ['Not enough fresh face samples. Face the camera and retry.', '有效样本不足，请面对镜头重试'], ['Action is not distinct enough from other face. Hold the target pose and retry.', '动作与其他表情区分不足，请保持动作重试'],
   ['Could not run Face Debug:', '调试启动失败：'], ['Requesting camera permission', '请求摄像头权限'], ['Camera ready; loading face model', '摄像头已就绪，加载模型'], ['Model ready', '模型已就绪'], ['detection started', '开始检测'], ['Recognition:', '识别：'], ['Debug settings:', '基准参数：'], ['Calibration sample:', '校准采样：'], ['Player correction:', '玩家校正：'], ['Baseline changed: player correction invalidated', '基准已改变，玩家校正失效'], ['Calibration cancelled; previous settings retained', '校准已取消，保留此前配置'], ['Calibration started: shared game algorithm; baseline stays unchanged', '开始校准，使用游戏共用算法，基准保持不变'],
 ];
 
 export function translateDebugText(text, language) {
   if (text.includes('\n')) return text.split('\n').map((line) => translateDebugText(line, language)).join('\n');
-  const aliases = { '微笑 / Smile': 'SMILE', '拒绝 / Refusal': 'REFUSAL', '呕吐 / Vomit': 'VOMIT', '闭眼 / Eyes closed': 'EYES CLOSED', '中性 / Neutral': 'NEUTRAL', '无脸 / No face': 'NO FACE' };
+  const aliases = { '微笑 / Smile': 'SMILE', '拒绝 / Refusal': 'REFUSAL', '呕吐 / Vomit': 'VOMIT', '闭眼 / Lidded': 'LIDDED', '放松 / Relaxed': 'RELAXED', '无脸 / No face': 'NO FACE' };
   for (const [label, canonical] of Object.entries(aliases)) text = text.replace(label, canonical);
   const exact = DEBUG_TRANSLATIONS.find(([en, zh]) => text.trim() === en || text.trim() === zh);
   if (exact) return language === 'zh' ? exact[1] : exact[0];

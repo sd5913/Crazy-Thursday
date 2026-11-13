@@ -393,6 +393,37 @@ body { margin: 0; }
 }
 .panel strong { color: var(--accent); }
 
+/* Start screen: start > demo >= debug. The debug entry stays clearly
+   visible while the camera game remains the obvious first choice. */
+#startBtn {
+  font-size: clamp(1.15rem, 4vw, 1.55rem);
+  padding: 1.15rem 1.6rem;
+  box-shadow: 0 0 0 3px rgba(243,182,108,.28), 0 8px 18px rgba(0,0,0,.35);
+}
+#demoBtn {
+  background: #e2b371;
+  font-size: clamp(1.05rem, 3.7vw, 1.38rem);
+  padding: 1.05rem 1.5rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,.28);
+}
+#faceDebugBtn {
+  background: #c99a55;
+  font-size: clamp(1rem, 3.5vw, 1.3rem);
+  padding: 1rem 1.4rem;
+  box-shadow: 0 3px 10px rgba(0,0,0,.22);
+}
+/* The default start screen no longer shows a settings note; the privacy
+   hint sits under the buttons so it cannot be overwritten by that note. */
+#gameSettingsStatus:empty { display: none; }
+.panel .privacy-note {
+  margin: 1.2rem 0 0;
+  font-size: clamp(.95rem, 3.2vw, 1.2rem);
+  opacity: .8;
+}
+/* Calibration: keep Start sampling and Skip clearly separated. */
+.calibration-actions { margin-top: 1.2rem; }
+.calibration-actions button { margin-top: 0; }
+
 /* Result share card shown on Game Over (the failure-frame composite). */
 .result-card {
   display: block;

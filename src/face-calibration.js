@@ -6,7 +6,7 @@ export const SAMPLE_MS = 1500;
 export const PLAYER_GAIN_MIN = 0.75;
 export const PLAYER_GAIN_MAX = 1.25;
 export const CALIBRATION_STEPS = [
-  { image: 'assets/calibration/neutral.svg', imageAlt: 'Relaxed face', key: 'neutral', title: `Calibration 1/5 · ${FACE_LABELS.neutral}`, hint: 'Keep a neutral face. Click to sample.' },
+  { image: 'assets/calibration/neutral.svg', imageAlt: 'Relaxed face', key: 'neutral', title: `Calibration 1/5 · ${FACE_LABELS.neutral}`, hint: 'Keep a relaxed face. Click to sample.' },
   { image: 'assets/calibration/smile.svg', imageAlt: 'Smile with mouth corners raised', key: 'smile', title: `Calibration 2/5 · ${FACE_LABELS.smile}`, hint: 'Smile and hold. Click to sample.' },
   { image: 'assets/calibration/frown.svg', imageAlt: 'Refusal: lower eyebrows or mouth corners', key: 'frown', title: `Calibration 3/5 · ${FACE_LABELS.refusal}`, hint: 'Lower your eyebrows or pull the mouth corners down, and hold.' },
   { image: 'assets/calibration/jaw.svg', imageAlt: 'Open your mouth wide', key: 'jaw', title: `Calibration 4/5 · ${FACE_LABELS.vomit}`, hint: 'Open your mouth wide and hold. Click to sample.' },
@@ -85,7 +85,7 @@ export function createFaceCalibration(baseline = getBaseline()) {
         lastSample = { key, ...sample.result() };
         sample = null;
         if (lastSample.faceFrames < 12 || lastSample.spanMs < 800) {
-          error = 'Not enough fresh face samples (need 12 frames over 800 ms). Face the camera and retry.';
+          error = 'Not enough fresh face samples. Face the camera and retry.';
         } else if ((key === 'neutral' || key === 'blink') && ['left', 'right'].some((side) => !lastSample.eyes[side])) {
           error = 'Eye landmarks unavailable. Face the camera and retry.';
         } else if (key === 'blink' && ['left', 'right'].some((side) => samples.neutral.eyes[side].median - lastSample.eyes[side].median < Math.max(.03, 3 * samples.neutral.eyes[side].iqr))) {
@@ -94,7 +94,7 @@ export function createFaceCalibration(baseline = getBaseline()) {
           const neutral = samples.neutral.stats[key];
           const delta = lastSample.stats[key].p75 - neutral.median;
           if (delta < Math.max(MIN_DELTA[key], 3 * neutral.iqr)) {
-            error = 'Action is not distinct enough from relaxed face. Hold the target pose and retry.';
+            error = 'Action is not distinct enough from other face. Hold the target pose and retry.';
           }
         }
         if (!error) {

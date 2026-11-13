@@ -209,7 +209,7 @@ export function updateGameSettingsLabel() {
   const status = document.getElementById('gameSettingsStatus');
   if (status) status.textContent = saved
     ? 'Saved developer baseline + player calibration at game start.'
-    : 'Default developer baseline + player calibration at game start.';
+    : '';
   const start = document.getElementById('startBtn');
   if (start) start.textContent = 'Start & Calibrate (needs camera)';
 }

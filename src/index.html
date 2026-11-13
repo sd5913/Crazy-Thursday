@@ -34,10 +34,11 @@
   <div id="overlay" class="overlay">
     <div class="panel" id="panel">
       <h1>Expression Feeding</h1>
-      <p>Smile to accept, lower your brows or mouth corners to refuse, open your mouth to purge. The camera is processed locally and never leaves your device.</p>
+      <p>Smile to accept, lower your brows or mouth corners to refuse, open your mouth to purge.</p>
       <button id="startBtn" type="button">Start &amp; Calibrate (needs camera)</button>
       <button id="demoBtn" type="button">Keyboard Demo (no camera)</button>
       <button id="faceDebugBtn" type="button">Face Debug</button>
+      <p class="privacy-note">The camera is processed locally and never leaves your device.</p>
       <p id="gameSettingsStatus"></p>
     </div>
   </div>
@@ -91,10 +92,10 @@
       <thead><tr><th>State</th><th>Illustration</th><th>Gesture</th><th>Trigger</th><th>Priority / game behavior</th></tr></thead>
       <tbody>
         <tr><th scope="row">VOMIT</th><td><img class="state-face" src="assets/calibration/jaw.svg" alt="Mouth open"></td><td>Open your mouth wide.</td><td>Jaw opening after player correction and baseline weighting reaches the vomit threshold.</td><td>Highest priority. A new mouth-opening gesture is required during rescue; holding it does not repeatedly trigger.</td></tr>
-        <tr><th scope="row">EYES CLOSED</th><td><img class="state-face" src="assets/calibration/blink.svg" alt="Eyes closed"></td><td>Keep both eyes closed.</td><td>Both raw eye openness ratios must be at or below the configured limit (default 0.05).</td><td>Selected if vomit is inactive. Defense requires continuous closure for the configured time (default 500 ms).</td></tr>
+        <tr><th scope="row">LIDDED</th><td><img class="state-face" src="assets/calibration/blink.svg" alt="Lidded"></td><td>Keep both eyes closed.</td><td>Both raw eye openness ratios must be at or below the configured limit (default 0.05).</td><td>Selected if vomit is inactive. Defense requires continuous closure for the configured time (default 500 ms).</td></tr>
         <tr><th scope="row">SMILE</th><td><img class="state-face" src="assets/calibration/smile.svg" alt="Smile"></td><td>Raise both mouth corners.</td><td>Smile score reaches its threshold and is at least refusal score + 0.05.</td><td>Selected if vomit and eyes closed are inactive.</td></tr>
         <tr><th scope="row">REFUSAL</th><td><img class="state-face" src="assets/calibration/frown.svg" alt="Refusal"></td><td>Lower your brows or mouth corners.</td><td>Raw refusal = max(average brow down, average mouth-corner down). Corrected, weighted refusal reaches its threshold while smile remains below its threshold.</td><td>Selected if vomit, eyes closed and smile are inactive.</td></tr>
-        <tr><th scope="row">NEUTRAL</th><td><img class="state-face" src="assets/calibration/neutral.svg" alt="Neutral"></td><td>Relax your face.</td><td>A face is detected, but none of the four actions meets all conditions.</td><td>Fallback classification, not an independent model score.</td></tr>
+        <tr><th scope="row">RELAXED</th><td><img class="state-face" src="assets/calibration/neutral.svg" alt="Relaxed"></td><td>Relax your face.</td><td>A face is detected, but none of the four actions meets all conditions.</td><td>Fallback classification, not an independent model score.</td></tr>
         <tr><th scope="row">NO FACE</th><td><img class="state-face" src="assets/calibration/none.svg" alt="No face"></td><td>Face is outside the frame or cannot be detected.</td><td>An actual inference returns no valid face.</td><td>Not ranked. Gameplay reuses the latest valid face briefly and marks it lost after 400 ms.</td></tr>
       </tbody>
     </table></div>
