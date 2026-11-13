@@ -49,8 +49,6 @@ const BS = {
   SMILE_R: 'mouthSmileRight',
   FROWN_L: 'mouthFrownLeft',
   FROWN_R: 'mouthFrownRight',
-  PRESS_L: 'mouthPressLeft',
-  PRESS_R: 'mouthPressRight',
   JAW: 'jawOpen',
   BLINK_L: 'eyeBlinkLeft',
   BLINK_R: 'eyeBlinkRight',

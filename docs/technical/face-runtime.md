@@ -29,7 +29,7 @@ Pipeline: camera frame → categories + eye geometry + freshness → shared anal
 
 ## Privacy and delivery
 
-- Frames are processed locally; initial JS/WASM/model and fonts can require internet.
+- Frames are processed locally; JS/WASM/model and fonts are bundled with the app, with no CDN fallback. See [bundled resources](../../src/vendor/README.md) for provenance, licenses and hashes.
 - Result cards capture frames in memory and may be downloaded as PNG at user request; local inference does not mean no face images are generated.
 - `src/` is source; `www/` is generated. The current copy build overwrites but does not remove obsolete output files: review clean release outputs.
 - Node 24 is recommended; package engines declares Node >=22. Web preview uses built-in Node modules; Electron/Android require additional platform dependencies.

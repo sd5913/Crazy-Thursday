@@ -1,7 +1,7 @@
 # Project documentation
 
 - [Expression inputs and gameplay](gameplay/expression-input.md)
-- [Recognition runtime and lifecycle](technical/face-runtime.md)
+- [Recognition runtime and lifecycle](technical/face-runtime.md) · [Bundled offline resources and licenses](../src/vendor/README.md)
 - [Baseline, player calibration and persistence](technical/calibration.md)
 - [Current status](../CURRENT.md) · [Tasks and verification gaps](../TODO.md)
 - [Team development log](../LOG.md)

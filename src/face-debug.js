@@ -252,7 +252,7 @@ export function openFaceDebug() {
     row.append(...cells); table.append(row);
     return { key, label, threshold, row, cells, weight, limit };
   });
-  const rawNames = ['leftEAR', 'rightEAR', 'mouthSmileLeft', 'mouthSmileRight', 'mouthFrownLeft', 'mouthFrownRight', 'mouthPressLeft', 'mouthPressRight', 'jawOpen', 'browDownLeft', 'browDownRight', 'browInnerUp', 'browOuterUpLeft', 'browOuterUpRight'];
+  const rawNames = ['leftEAR', 'rightEAR', 'mouthSmileLeft', 'mouthSmileRight', 'mouthFrownLeft', 'mouthFrownRight', 'jawOpen', 'browDownLeft', 'browDownRight', 'browInnerUp', 'browOuterUpLeft', 'browOuterUpRight'];
   const rawTable = get('debugRaw');
   rawTable.replaceChildren();
   const rawCells = rawNames.map((name) => {

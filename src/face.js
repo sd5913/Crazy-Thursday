@@ -1,18 +1,12 @@
 import { measureEyes } from './eye-geometry.js';
 // Local, on-device face landmarking for the feeding game.
 //
-// Uses MediaPipe Tasks Vision (FaceLandmarker with face blendshapes) loaded from
-// a CDN. The model is fetched from Google's public model bucket. Nothing is
-// uploaded: every frame is processed in the browser / WebView locally.
-//
-// Requires an internet connection on first load (for the WASM + model), which is
-// consistent with the course's local-processing privacy stance.
-
+// MediaPipe code, WASM and model are bundled with the app. No CDN fallback.
+// Every frame is processed locally in the browser / WebView.
 const VERSION = '0.10.18';
-const VISION_URL = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${VERSION}/vision_bundle.mjs`;
-const WASM_URL = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${VERSION}/wasm`;
-const MODEL_URL =
-  'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
+const VISION_URL = new URL(`./vendor/mediapipe/${VERSION}/vision_bundle.mjs`, import.meta.url).href;
+const WASM_URL = new URL(`./vendor/mediapipe/${VERSION}/wasm/`, import.meta.url).href;
+const MODEL_URL = new URL('./vendor/mediapipe/face_landmarker.task', import.meta.url).href;
 
 let landmarker = null;
 let initialization = null;

@@ -11,6 +11,7 @@
 `face-calibration.js` supplies one state machine to both game and Debug: neutral, smile, refusal, mouth-opening gesture for VOMIT, eyes closed.
 
 - Each step samples for 1.5 seconds; ignores the first 250ms.
+- The game illustration has a clockwise progress outline starting at 12 o’clock. Its progress derives from the sampler’s remaining time, not an independent animation clock; retry/next step resets it.
 - At least 12 valid fresh observations spanning 800ms are required.
 - Neutral uses median; target actions use P75, rather than a single maximum.
 - Insufficient samples or insufficient separation from relaxed noise require retry.

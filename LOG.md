@@ -51,3 +51,17 @@ Status: local working-tree changes developed with AI assistance at the repositor
 - Latest executed evidence: 46 Node tests passed, build/diff checks passed, and headless Chrome verified Demo neutral/S/F/V/B/release. Final real-camera and platform accuracy/delivery remain unverified.
 - Superseded experiments include tongue-output assumptions, lip-press refusal and the Squint >0.6 gate. Retained personal eye-reference samples are not used to normalize the final raw-ratio gate; see the remaining work in [TODO.md](TODO.md).
 - This file is the single team development log. No separate per-session development log is maintained; future milestones should extend this chronology with evidence and attribution.
+
+## 2026-11-13 — Local-only runtime resource update (uncommitted)
+
+- Bundled the existing MediaPipe model/runtime and both pixel fonts with upstream license files and an integrity manifest; removed runtime CDN/font requests. Model and gameplay rules are unchanged.
+- Added `.mjs` and font MIME types to web/desktop servers. Resource payload is about 22.39 MiB.
+- 48 tests passed; build succeeded. Cold Chrome session with external requests blocked loaded real model/WASM and fonts, ran Debug inference and started the camera game with a simulated video source. Desktop/Android installed bundles and real-player accuracy remain unverified.
+
+## 2026-11-13 — Release reconciliation and sampling feedback
+
+- The preceding diagnostics/input iteration was published as `7099486` with annotated tag `v1.3.0`. Its earlier “uncommitted” entry describes the status when compiled; this entry records the later publication without rewriting history.
+- Removed unused mouthPress rows/constants; refusal behavior was already independent of lip pressing.
+- Added a sampling progress outline around the existing calibration illustration: clockwise from 12 o’clock, synchronized with actual sampling time, reset on retry/next step. No calibration algorithm change.
+- Browser checks verified intermediate ring progress and retry reset. The offline-runtime check also verified the actual localhost:8000 server after restarting an older process that returned the wrong MIME type for `.mjs`.
+- Current release preparation remains uncommitted. No repository-local temporary documents were found; no files were deleted during this documentation pass.

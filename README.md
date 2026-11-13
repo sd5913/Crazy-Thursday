@@ -24,8 +24,8 @@ The launcher builds `www/`, starts a local server, and opens
 `http://localhost:8000/`. Keep its terminal window open; press Ctrl+C to stop.
 The web preview needs only Node (no Python, Android SDK or `npm ci`). Do not
 open the HTML with `file://`: browser modules and camera access need a local
-HTTP origin. Camera mode requires permission and internet access to download
-the MediaPipe model; **Demo** mode uses S / F / V / B without a camera.
+HTTP origin. Camera mode requires permission. MediaPipe JS/WASM/model and fonts are bundled locally;
+no external network is needed for the local preview. **Demo** mode uses S / F / V / B without a camera.
 
 If macOS reports a permission error, run `chmod +x scripts/start-mac.command`
 from the repository root. If port 8000 is occupied, stop the existing server
@@ -137,3 +137,7 @@ The earlier README weekly notes mixed historical implementation details and prop
 The committed history establishes the template, camera-feeding prototype, artwork, combo, sharing, desktop entry, responsive UI and replay before the current diagnostics iteration. The log identifies recorded commit authors without treating commit counts as contribution shares or exclusive ownership.
 
 Sound effects and friend challenges appeared as mixed “added/planned” items in the earlier notes; they are not claimed here as verified runtime features. Current recognition behavior is specified in [expression inputs](docs/gameplay/expression-input.md), not by obsolete Blink, tongue, lip-press or Lidded descriptions from historical revisions.
+
+## Offline runtime assets
+
+Model, SIMD/non-SIMD WASM and fonts are bundled in `src/` (about 22.39 MiB). See [resource provenance and licenses](src/vendor/README.md). Local preview needs no CDN or Google access. Hosted web pages still require their own server unless separately installed/cached; no service worker is provided. Platform dependency installation may require internet.

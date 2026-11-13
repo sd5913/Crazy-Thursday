@@ -24,7 +24,7 @@ import {
 const RESULT_MS = 900;
 const RESCUE_MS = 2500;
 import { FACE_LABELS } from './face-labels.js';
-import { createFaceCalibration } from './face-calibration.js';
+import { createFaceCalibration, SAMPLE_MS } from './face-calibration.js';
 // Eyes must stay shut for this long before the spoon lands. A natural blink
 // (~100ms) is too short, so it can no longer fake a defense.
 
@@ -174,7 +174,11 @@ export async function startGame(mode = 'camera', opts = {}) {
         }
         showOverlay(
           `<h1>${status.step.title}</h1>` +
-          `<img class="calibration-image" src="${status.step.image}" alt="${status.step.imageAlt}">` +
+          `<div class="calibration-clock" id="calClock" role="progressbar" aria-label="Sampling progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">` +
+          `<svg class="calibration-ring" viewBox="0 0 120 120" aria-hidden="true">` +
+          `<circle class="calibration-ring-track" cx="60" cy="60" r="56"/>` +
+          `<circle id="calRing" class="calibration-ring-progress" cx="60" cy="60" r="56" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100"/></svg>` +
+          `<img class="calibration-image" src="${status.step.image}" alt="${status.step.imageAlt}"></div>` +
           `<p>${status.step.hint}</p>` +
           (status.error ? `<p>${status.error}</p>` : '') +
           `<button id="calBtn" type="button">Start sampling</button>` +
@@ -188,13 +192,19 @@ export async function startGame(mode = 'camera', opts = {}) {
         document.getElementById('calBtn').addEventListener('click', (event) => {
           event.currentTarget.disabled = true;
           document.getElementById('skipCalBtn').disabled = true;
+          const clock = document.getElementById('calClock');
+          const ring = document.getElementById('calRing');
+          event.currentTarget.textContent = 'Sampling…';
           calibration.startSample(performance.now());
           function tick(now) {
             const result = detectFaceFrame(el.video);
             const next = calibration.feed(result.inferred && result.freshVideoFrame !== false ? result.categories : null, now, result.eyeGeometry);
+            const progress = Math.max(0, Math.min(1, 1 - next.remainingMs / SAMPLE_MS));
+            ring.setAttribute('stroke-dashoffset', String(100 * (1 - progress)));
+            clock.setAttribute('aria-valuenow', String(Math.round(progress * 100)));
             setSubtitle(`Sampling… ${(next.remainingMs / 1000).toFixed(1)} s`);
             if (next.sampling) requestAnimationFrame(tick);
-            else render(next);
+            else requestAnimationFrame(() => render(next));
           }
           requestAnimationFrame(tick);
         }, { once: true });

@@ -15,6 +15,7 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
 await import('./build.mjs');
 const types = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8', '.ttf': 'font/ttf',
   '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml',
   '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.wasm': 'application/wasm',
