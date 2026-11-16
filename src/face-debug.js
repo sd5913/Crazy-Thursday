@@ -1,4 +1,5 @@
 import { createDebugLanguage } from './face-debug-i18n.js';
+import { t } from './i18n.js';
 import { createEyeHold, protectedEyeExpression } from './eye-hold.js';
 import { FACE_DESCRIPTIONS as FACE_LABELS, faceLabel } from './face-labels.js';
 import { openCamera, initFaceLandmarker, detectFaceFrame, resetFaceTracking } from './face.js';
@@ -207,11 +208,9 @@ export function createDebugSession({
 export function updateGameSettingsLabel() {
   const saved = getAppliedFaceSettings();
   const status = document.getElementById('gameSettingsStatus');
-  if (status) status.textContent = saved
-    ? 'Saved developer baseline + player calibration at game start.'
-    : '';
+  if (status) status.textContent = saved ? t('settingsSaved') : '';
   const start = document.getElementById('startBtn');
-  if (start) start.textContent = 'Start & Calibrate (needs camera)';
+  if (start) start.textContent = t('startBtn');
 }
 
 export function openFaceDebug() {

@@ -12,3 +12,12 @@
   font-weight: 400;
   font-display: swap;
 }
+/* Pixel CJK subset (Fusion Pixel 12px, OFL): covers the Chinese copy only;
+   Latin glyphs stay in the two fonts above, CJK falls through to this one. */
+@font-face {
+  font-family: 'Fusion Pixel 12';
+  src: url('./FusionPixel12-zh_hans-subset.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}

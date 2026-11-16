@@ -1,4 +1,7 @@
 // Debug-only presentation; never changes model keys, settings or game labels.
+// The debug page follows the global 中/EN language from src/i18n.js.
+import { getLanguage, setLanguage, onLanguageChange } from './i18n.js';
+
 export const DEBUG_TRANSLATIONS = [
   ['Both raw eye openness ratios must be at or below the configured limit (default 0.05).', '左右眼原始开合比例都须不超过配置上限（默认0.05）。'],
   ['Eye landmarks unavailable. Face the camera and retry.', '眼睑关键点不可用，请正对摄像头重试。'],
@@ -89,7 +92,7 @@ export function translateDebugText(text, language) {
 }
 
 export function createDebugLanguage(view, button) {
-  let language = 'en';
+  let language = getLanguage(); // debug page starts in the global language
   const original = new WeakMap();
   const rendered = new WeakMap();
   function render() {
@@ -117,8 +120,15 @@ export function createDebugLanguage(view, button) {
     observer.observe(view, { childList: true, subtree: true, characterData: true });
   }
   const observer = new MutationObserver(render);
-  const toggle = () => { language = language === 'en' ? 'zh' : 'en'; render(); };
+  // The debug button flips the GLOBAL language; setLanguage notifies the game,
+  // and the subscription below re-renders this page for any change source.
+  const toggle = () => { setLanguage(language === 'en' ? 'zh' : 'en'); };
+  const unsubscribe = onLanguageChange((next) => {
+    if (next === language) return;
+    language = next;
+    render();
+  });
   button.addEventListener('click', toggle);
   render();
-  return () => { observer.disconnect(); button.removeEventListener('click', toggle); };
+  return () => { observer.disconnect(); unsubscribe(); button.removeEventListener('click', toggle); };
 }

@@ -1,16 +1,14 @@
-// Generates SVG placeholder art so the UI has real <img> slots for the art
-// team to replace later. Run with: node scripts/gen-placeholders.mjs
-// Output lands in src/assets and is copied to www/ by the build.
+// Generates SVG placeholder art for the non-food UI slots.
+// Run with: node scripts/gen-placeholders.mjs
+// Food art lives in food-assets/ and is exported by `npm run build`; this
+// script no longer emits per-item placeholder SVGs.
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { ITEMS } from '../src/logic.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const assets = join(root, 'src', 'assets');
-mkdirSync(join(assets, 'food'), { recursive: true });
-
-const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+mkdirSync(assets, { recursive: true });
 
 const bg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080">
   <rect width="1920" height="1080" fill="#162a29"/>
@@ -28,17 +26,8 @@ const hud = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 140">
 writeFileSync(join(assets, 'hud.svg'), hud);
 
 const hint = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 120">
-  <rect width="640" height="120" rx="24" fill="#10201e" opacity="0.85" stroke="#2f4d48" stroke-width="2"/>
+  <rect width="640" height="120" rx="24" fill="#10201e" opacity="0.85" stroke="#f3b66c" stroke-width="2"/>
 </svg>`;
 writeFileSync(join(assets, 'hint.svg'), hint);
 
-for (const it of ITEMS) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
-    <rect width="200" height="200" rx="28" fill="#1d3431" stroke="#f3b66c" stroke-width="4"/>
-    <text x="100" y="98" font-size="76" text-anchor="middle">${esc(it.emoji)}</text>
-    <text x="100" y="152" font-size="22" fill="#f5f0df" text-anchor="middle" font-family="'VT323', 'Courier New', monospace">${esc(it.name)}</text>
-  </svg>`;
-  writeFileSync(join(assets, 'food', `${it.id}.svg`), svg);
-}
-
-console.log(`Generated placeholders: bg.svg, hud.svg, hint.svg, food/${ITEMS.length}.svg`);
+console.log('Generated placeholders: bg.svg, hud.svg, hint.svg (food art: npm run build)');

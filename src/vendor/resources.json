@@ -64,5 +64,17 @@
     "source": "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
     "bytes": 3758596,
     "sha256": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff"
+  },
+  {
+    "path": "assets/fonts/FusionPixel12-zh_hans-subset.woff2",
+    "source": "https://github.com/TakWolf/fusion-pixel-font/releases/tag/2026.11.10 (12px-proportional, subset built by scripts/build-pixel-cjk-font.mjs)",
+    "bytes": 26400,
+    "sha256": "2b1f1bc74013404330470069840002de396db0233ebdda10c0f09ee0bad61f96"
+  },
+  {
+    "path": "assets/fonts/fusion-pixel-OFL.txt",
+    "source": "https://github.com/TakWolf/fusion-pixel-font/releases/tag/2026.11.10 (12px-proportional, subset built by scripts/build-pixel-cjk-font.mjs)",
+    "bytes": 4418,
+    "sha256": "bc518cf64b8032c07690f33cc270c35c179255a6ac8efa7c165ebae7e8f76a63"
   }
 ]

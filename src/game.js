@@ -8,6 +8,7 @@ import {
   INTENT,
   OUTCOME,
   judge,
+  comboContinues,
   speedForLevel,
   applyRescue,
   randomItem,
@@ -23,7 +24,17 @@ import {
 
 const RESULT_MS = 900;
 const RESCUE_MS = 2500;
-import { FACE_LABELS } from './face-labels.js';
+// Twice the fastest serving pace, with a short result beat so the frenzy
+// does not stall between bites.
+const FRENZY_TRAVEL_MS = speedForLevel(100).travelMs / 2;
+const FRENZY_RESULT_MS = FRENZY_TRAVEL_MS / 3;
+import { t, getLanguage, faceLabel, onLanguageChange } from './i18n.js';
+import { foodText } from './food-catalogue.js';
+import { GLITCH_PHOTO } from './cthulhu.js';
+import {
+  createResultStats, recordServe, recordRescue, determineResult, comboScoreBonus,
+  RESULT, RESULT_PHOTO, CTHULHU_STREAK,
+} from './result.js';
 import { createFaceCalibration, SAMPLE_MS } from './face-calibration.js';
 // Eyes must stay shut for this long before the spoon lands. A natural blink
 // (~100ms) is too short, so it can no longer fake a defense.
@@ -33,28 +44,29 @@ import { createFaceCalibration, SAMPLE_MS } from './face-calibration.js';
 // valid detection; brief gaps reuse the last good frame instead.
 const FACE_LOST_MS = 400;
 
-const NURSE_LINES = [
-  'Open up. It is for your own good.',
-  'Be a dear and swallow.',
-  'Doctor says you need the nutrients.',
-  'Try this little something.',
-  'You are doing so well today.',
-];
-
 // Badge renders two lines: a big primary label + a small secondary note.
-const BADGE_TEXT = {
-  [EXPRESSIONS.SMILE]: [FACE_LABELS.smile, 'accepting'],
-  [EXPRESSIONS.REFUSAL]: [FACE_LABELS.refusal, 'refusing'],
-  [EXPRESSIONS.VOMIT]: [FACE_LABELS.vomit, 'purging'],
-  [EXPRESSIONS.BLINK]: [FACE_LABELS.blink, 'defending'],
-  [EXPRESSIONS.NEUTRAL]: [FACE_LABELS.neutral, 'no action'],
-  none: [FACE_LABELS.none, 'not detected'],
-};
+// Resolved per call so the 中/EN switch re-renders in the active language.
+function badgeText(expr) {
+  const sub = {
+    [EXPRESSIONS.SMILE]: 'accepting',
+    [EXPRESSIONS.REFUSAL]: 'refusing',
+    [EXPRESSIONS.VOMIT]: 'purging',
+    [EXPRESSIONS.BLINK]: 'defending',
+    [EXPRESSIONS.NEUTRAL]: 'noAction',
+    none: 'notDetected',
+  }[expr] ?? 'notDetected';
+  const face = expr === 'none' ? 'none' : expr; // EXPRESSIONS values match face.* keys
+  return [faceLabel(face), t(`badge.${sub}`)];
+}
+// Overlay renderer for the active screen (calibration / game over), so the
+// language toggle can rebuild the visible panel without restarting the run.
+let rerenderOverlay = null;
 
 export async function startGame(mode = 'camera', opts = {}) {
   const eyeHold = createEyeHold();
   const el = {
     video: document.getElementById('cam'),
+    bg: document.getElementById('bg'),
     overlay: document.getElementById('overlay'),
     panel: document.getElementById('panel'),
     score: document.getElementById('score'),
@@ -87,16 +99,22 @@ export async function startGame(mode = 'camera', opts = {}) {
     failShot: null,
     maxCombo: 0,
     closedSince: 0, // timestamp of the start of the current eyes-shut hold
+    stats: createResultStats(),
+    cthulhu: false,
+    cthulhuExitAt: 0,
+    lastFaceLost: false,
   };
 
   const setScore = () => (el.score.textContent = String(state.score));
   const setDiscomfort = () =>
-    (el.discomfortFill.style.width = `${(state.discomfort / SCORING.MAX_DISCOMFORT) * 100}%`);
+    (el.discomfortFill.style.width = state.cthulhu
+      ? '300%' // the bar bursts out of its container and off screen
+      : `${(state.discomfort / SCORING.MAX_DISCOMFORT) * 100}%`);
   let shownExpr = null;
   const setBadge = (expr) => {
     if (expr === shownExpr) return; // rebuild only when the pose changes
     shownExpr = expr;
-    const [main, sub] = BADGE_TEXT[expr] ?? BADGE_TEXT.none;
+    const [main, sub] = badgeText(expr);
     const top = document.createElement('span');
     top.className = 'badge-main';
     top.textContent = main;
@@ -108,12 +126,10 @@ export async function startGame(mode = 'camera', opts = {}) {
   };
   const setSubtitle = (text) => {
     el.subtitle.textContent = text;
-    // Long one-off legends would otherwise overflow the fixed-height bubble.
-    el.subtitle.classList.toggle('long', text.length > 44);
   };
   const setCombo = () => {
     if (state.combo > state.maxCombo) state.maxCombo = state.combo;
-    el.combo.textContent = `combo ×${state.combo}`;
+    el.combo.textContent = t('combo', { n: state.combo });
     el.combo.hidden = state.combo < 2; // a streak only shows from ×2 up
     if (state.combo >= 2) {
       el.combo.classList.remove('pop');
@@ -161,58 +177,72 @@ export async function startGame(mode = 'camera', opts = {}) {
   }
 
   // --- calibration ---------------------------------------------------------
+  const cap = (key) => key[0].toUpperCase() + key.slice(1);
+  const stepFaceKey = (key) => (key === 'frown' ? 'refusal' : key === 'jaw' ? 'vomit' : key);
+  const calHint = (key) => t(`calHint${cap(key)}`);
+  const calAlt = (key) => t(`calAlt${cap(key)}`);
+  const calStepTitle = (step, index) => t('calStep', { n: index + 1, label: faceLabel(stepFaceKey(step.key)) });
+
   async function calibrate() {
     const baseline = getBaseline();
     const calibration = createFaceCalibration(baseline);
-    await new Promise((done) => {
-      function render(status) {
-        if (status.completed) {
-          state.thresholds = { baseline, profile: status.profile };
-          setPlayerProfile(status.profile);
-          done();
-          return;
-        }
-        showOverlay(
-          `<h1>${status.step.title}</h1>` +
-          `<div class="calibration-clock" id="calClock" role="progressbar" aria-label="Sampling progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">` +
-          `<svg class="calibration-ring" viewBox="0 0 120 120" aria-hidden="true">` +
-          `<circle class="calibration-ring-track" cx="60" cy="60" r="56"/>` +
-          `<circle id="calRing" class="calibration-ring-progress" cx="60" cy="60" r="56" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100"/></svg>` +
-          `<img class="calibration-image" src="${status.step.image}" alt="${status.step.imageAlt}"></div>` +
-          `<p>${status.step.hint}</p>` +
-          (status.error ? `<p>${status.error}</p>` : '') +
-          `<div class="card-actions calibration-actions">` +
-          `<button id="calBtn" type="button">Start sampling</button>` +
-          `<button id="skipCalBtn" type="button">Skip</button>` +
-          `</div>`
-        );
-        document.getElementById('skipCalBtn').addEventListener('click', () => {
-          state.thresholds = { baseline, profile: null };
-          setPlayerProfile(null);
-          done();
-        }, { once: true });
-        document.getElementById('calBtn').addEventListener('click', (event) => {
-          event.currentTarget.disabled = true;
-          document.getElementById('skipCalBtn').disabled = true;
-          const clock = document.getElementById('calClock');
-          const ring = document.getElementById('calRing');
-          event.currentTarget.textContent = 'Sampling…';
-          calibration.startSample(performance.now());
-          function tick(now) {
-            const result = detectFaceFrame(el.video);
-            const next = calibration.feed(result.inferred && result.freshVideoFrame !== false ? result.categories : null, now, result.eyeGeometry);
-            const progress = Math.max(0, Math.min(1, 1 - next.remainingMs / SAMPLE_MS));
-            ring.setAttribute('stroke-dashoffset', String(100 * (1 - progress)));
-            clock.setAttribute('aria-valuenow', String(Math.round(progress * 100)));
-            setSubtitle(`Sampling… ${(next.remainingMs / 1000).toFixed(1)} s`);
-            if (next.sampling) requestAnimationFrame(tick);
-            else requestAnimationFrame(() => render(next));
-          }
-          requestAnimationFrame(tick);
-        }, { once: true });
+    let finish = () => {};
+    function render(status) {
+      if (status.completed) {
+        state.thresholds = { baseline, profile: status.profile };
+        setPlayerProfile(status.profile);
+        finish();
+        return;
       }
-      render(calibration.snapshot());
-    });
+      showOverlay(
+        `<h1>${calStepTitle(status.step, status.index)}</h1>` +
+        `<div class="calibration-clock" id="calClock" role="progressbar" aria-label="Sampling progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">` +
+        `<svg class="calibration-ring" viewBox="0 0 120 120" aria-hidden="true">` +
+        `<circle class="calibration-ring-track" cx="60" cy="60" r="56"/>` +
+        `<circle id="calRing" class="calibration-ring-progress" cx="60" cy="60" r="56" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100"/></svg>` +
+        `<img class="calibration-image" src="${status.step.image}" alt="${calAlt(status.step.key)}"></div>` +
+        `<p>${calHint(status.step.key)}</p>` +
+        (status.error ? `<p>${t(status.error)}</p>` : '') +
+        `<div class="card-actions calibration-actions">` +
+        `<button id="calBtn" type="button">${t('calStartSampling')}</button>` +
+        `<button id="skipCalBtn" type="button">${t('calSkip')}</button>` +
+        `</div>`
+      );
+      document.getElementById('skipCalBtn').addEventListener('click', () => {
+        state.thresholds = { baseline, profile: null };
+        setPlayerProfile(null);
+        finish();
+      }, { once: true });
+      document.getElementById('calBtn').addEventListener('click', (event) => {
+        event.currentTarget.disabled = true;
+        document.getElementById('skipCalBtn').disabled = true;
+        const clock = document.getElementById('calClock');
+        const ring = document.getElementById('calRing');
+        event.currentTarget.textContent = t('calSampling');
+        calibration.startSample(performance.now());
+        function tick(now) {
+          const result = detectFaceFrame(el.video);
+          const next = calibration.feed(result.inferred && result.freshVideoFrame !== false ? result.categories : null, now, result.eyeGeometry);
+          const progress = Math.max(0, Math.min(1, 1 - next.remainingMs / SAMPLE_MS));
+          ring.setAttribute('stroke-dashoffset', String(100 * (1 - progress)));
+          clock.setAttribute('aria-valuenow', String(Math.round(progress * 100)));
+          setSubtitle(t('calProgress', { s: (next.remainingMs / 1000).toFixed(1) }));
+          if (next.sampling) requestAnimationFrame(tick);
+          else requestAnimationFrame(() => render(next));
+        }
+        requestAnimationFrame(tick);
+      }, { once: true });
+    }
+    // A re-render mid-sample would detach the progress ring, so only idle steps rebuild.
+    rerenderOverlay = () => {
+      const status = calibration.snapshot();
+      if (!status.sampling) render(status);
+    };
+    try {
+      await new Promise((done) => { finish = done; render(calibration.snapshot()); });
+    } finally {
+      rerenderOverlay = null;
+    }
   }
 
   // --- round flow ----------------------------------------------------------
@@ -222,36 +252,87 @@ export async function startGame(mode = 'camera', opts = {}) {
     state.closedSince = 0; // each serve starts a fresh eyes-shut hold
     state.item = randomItem();
     el.item.src = state.item.image;
-    el.item.alt = state.item.name;
+    el.item.alt = foodText(state.item, getLanguage()).name;
     const speed = speedForLevel(state.level);
     state.phase = 'serving';
     state.phaseStart = performance.now();
-    state.phaseDuration = speed.travelMs;
+    state.phaseDuration = state.cthulhu ? FRENZY_TRAVEL_MS : speed.travelMs;
     el.spoon.style.opacity = '0';
     el.spoon.style.transform = 'translate(-74%, -70%) scale(2)';
-    setSubtitle(state.item.line || NURSE_LINES[state.round % NURSE_LINES.length]);
+    if (state.cthulhu) {
+      setSubtitle(t('cthulhuChant')); // the only line the frenzy allows
+      return;
+    }
+    const itemText = foodText(state.item, getLanguage());
+    const nurseLines = t('nurseLines');
+    setSubtitle(itemText.line || nurseLines[state.round % nurseLines.length]);
+  }
+
+  function enterCthulhu() {
+    if (state.cthulhu) return;
+    state.cthulhu = true;
+    state.cthulhuExitAt = 0;
+    state.score = -2147483647;
+    state.discomfort = SCORING.MAX_DISCOMFORT;
+    setScore();
+    setDiscomfort();
+    el.bg.src = GLITCH_PHOTO;
+    document.body.classList.add('cthulhu-mode');
+    setSubtitle(t('cthulhuChant'));
   }
 
   function resolveServe() {
+    // Invincible: the badge still shows the face, but nothing the player does
+    // can score, hurt, rescue or otherwise change the run any more.
+    if (state.cthulhu) {
+      state.phase = 'result';
+      state.phaseStart = performance.now();
+      state.phaseDuration = FRENZY_RESULT_MS;
+      setSubtitle(t('cthulhuChant'));
+      return;
+    }
     const outcome = judge(state.item, state.lastIntent);
+    const before = state.discomfort;
     state.score += outcome.scoreDelta;
     state.discomfort = Math.max(0, Math.min(SCORING.MAX_DISCOMFORT, state.discomfort + outcome.discomfortDelta));
+    recordServe(state.stats, {
+      item: state.item,
+      intent: state.lastIntent,
+      outcome,
+      appliedDiscomfort: state.discomfort - before, // clamped delta, not the nominal one
+      faceLost: state.lastFaceLost,
+    });
     setScore();
     setDiscomfort();
 
-    // Correct plays AND eye-defense both accelerate the game (level up). But
-    // defense breaks the combo streak even though it speeds things up.
-    if (outcome.type === OUTCOME.CORRECT_ACCEPT || outcome.type === OUTCOME.CORRECT_REJECT || outcome.type === OUTCOME.DEFENDED) {
+    // Correct plays AND eye-defense both accelerate the game (level up).
+    if (outcome.type === OUTCOME.CORRECT_ACCEPT || outcome.type === OUTCOME.CORRECT_REJECT || outcome.type === OUTCOME.SURREAL_ACCEPT || outcome.type === OUTCOME.DEFENDED) {
       state.level += 1;
-      if (outcome.type === OUTCOME.DEFENDED) state.combo = 0;
-      else state.combo += 1;
     } else if (outcome.type === OUTCOME.WRONG_EAT) {
       state.level = Math.max(0, state.level - 1);
-      state.combo = 0;
-    } else {
-      state.combo = 0; // DECLINED_FOOD (missed a good bite) breaks the streak
+    }
+    // Combo is a pure rule: surreal food keeps the streak on both acceptance
+    // and refusal, without scoring or accelerating on the refusal.
+    const previousCombo = state.combo;
+    state.combo = comboContinues(outcome) ? state.combo + 1 : 0;
+    const comboBonus = comboScoreBonus(previousCombo, state.combo);
+    if (comboBonus) {
+      state.score += comboBonus;
+      setScore(); // combo points count towards the final score and result
     }
     setCombo();
+
+    // Six consecutive eyes-shut or no-face rounds do NOT end the run: they
+    // unleash the invincible frenzy, which ends only after the player leaves
+    // that state for five seconds.
+    if (state.stats.defenseStreak >= CTHULHU_STREAK) {
+      enterCthulhu();
+      state.phase = 'result';
+      state.phaseStart = performance.now();
+      state.phaseDuration = FRENZY_RESULT_MS;
+      setSubtitle(t('cthulhuChant'));
+      return;
+    }
 
     if (outcome.type === OUTCOME.WRONG_EAT) {
       state.wrongEats += 1;
@@ -260,7 +341,7 @@ export async function startGame(mode = 'camera', opts = {}) {
       state.rescueResolved = false;
       state.phaseStart = performance.now();
       state.phaseDuration = RESCUE_MS;
-      setSubtitle('Wrong bite! Gag now!');
+      setSubtitle(t('wrongBite'));
       return;
     }
     flashResult(outcome);
@@ -270,13 +351,15 @@ export async function startGame(mode = 'camera', opts = {}) {
     let msg;
     if (outcome.type === OUTCOME.DEFENDED) {
       // Nurse nags you for shutting your eyes instead of eating -- rotate lines.
-      const lines = ['Excuse me?!', 'You Need To EAT!', "Don't go hungry.", 'Anyone there?'];
+      const lines = t('defenseLines');
       msg = lines[Math.floor(Math.random() * lines.length)];
     } else {
       msg = {
-        [OUTCOME.CORRECT_ACCEPT]: 'Swallowed. +10',
-        [OUTCOME.CORRECT_REJECT]: 'Rejected. +10',
-        [OUTCOME.DECLINED_FOOD]: 'You declined food.',
+        [OUTCOME.CORRECT_ACCEPT]: t('outcomeSwallowed'),
+        [OUTCOME.CORRECT_REJECT]: t('outcomeRejected'),
+        [OUTCOME.SURREAL_ACCEPT]: t('outcomeSurreal', { n: SCORING.SURREAL_POINTS }),
+        [OUTCOME.SURREAL_REJECT]: t('outcomeSurrealReject'),
+        [OUTCOME.DECLINED_FOOD]: t('outcomeDeclined'),
       }[outcome.type];
     }
     setSubtitle(msg);
@@ -288,8 +371,9 @@ export async function startGame(mode = 'camera', opts = {}) {
   function resolveRescue(success) {
     const before = state.discomfort;
     state.discomfort = applyRescue(before, success);
+    recordRescue(state.stats, state.discomfort - before);
     setDiscomfort();
-    setSubtitle(success ? `Upchucked. Discomfort -${before - state.discomfort}` : 'Held it in. Discomfort worsens…');
+    setSubtitle(success ? t('rescueUp', { n: before - state.discomfort }) : t('rescueHeld'));
     state.phase = 'result';
     state.phaseStart = performance.now();
     state.phaseDuration = RESULT_MS;
@@ -321,7 +405,13 @@ export async function startGame(mode = 'camera', opts = {}) {
       failShot: null,
       maxCombo: 0,
       closedSince: 0,
+      stats: createResultStats(),
+      cthulhu: false,
+      cthulhuExitAt: 0,
+      lastFaceLost: false,
     });
+    el.bg.src = 'assets/bg.jpg';
+    document.body.classList.remove('cthulhu-mode');
     setScore();
     setDiscomfort();
     setCombo();
@@ -338,30 +428,45 @@ export async function startGame(mode = 'camera', opts = {}) {
     requestAnimationFrame(loop);
   }
 
-  function gameOver() {
+  function loadCardPicture(src) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+      img.src = src;
+    });
+  }
+
+  async function gameOver() {
     state.phase = 'gameover';
     const seconds = Math.round((performance.now() - state.startTime) / 1000);
     if (!state.failShot) state.failShot = captureFrame(); // fallback grab if no prior fail
-    const card = buildResultCard(state.failShot, {
+    const resultKey = determineResult(state, state.stats);
+    const resultTitle = t(`result.${resultKey}`);
+    // Three endings replace the failure snapshot with a fixed picture.
+    const fixed = RESULT_PHOTO[resultKey];
+    const photo = fixed ? (await loadCardPicture(fixed)) || state.failShot : state.failShot;
+    const card = buildResultCard(photo, {
       score: state.score,
       seconds,
       wrongEats: state.wrongEats,
       maxCombo: state.maxCombo,
-      resultTitle: 'The Crush', // placeholder: swap for a per-run result label
+      resultTitle,
     });
     const cardUrl = card.toDataURL('image/png');
     showOverlay(
-      `<h1>Game Over</h1>` +
-      `<img id="resultCard" class="result-card" src="${cardUrl}" alt="Feeding Result Card">` +
+      `<h1>${resultTitle}</h1>` +
+      `<p class="result-hint">${t(`resultHint.${resultKey}`)}</p>` +
+      `<img id="resultCard" class="result-card" src="${cardUrl}" alt="${t('resultCardAlt')}">` +
       `<div class="card-actions${isDemo ? '' : ' two-up'}">` +
-      `<button id="againBtn" type="button" title="Same player: keep the current calibration">Play Again</button>` +
-      (isDemo ? '' : `<button id="newPlayerBtn" type="button" title="Recalibrate for a different player or new lighting">New Player</button>`) +
+      `<button id="againBtn" type="button" title="${t('playAgainTitle')}">${t('playAgain')}</button>` +
+      (isDemo ? '' : `<button id="newPlayerBtn" type="button" title="${t('newPlayerTitle')}">${t('newPlayer')}</button>`) +
       `</div>` +
       `<div class="card-actions save-row">` +
-      `<button id="saveCardBtn" type="button">Save Result Card</button>` +
+      `<button id="saveCardBtn" type="button">${t('saveCard')}</button>` +
       `</div>` +
-      `<p class="share-note">Share your feeding!</p>`,
-      'gameover-panel'
+      `<p class="share-note">${t('shareNote')}</p>`,
+      resultKey === RESULT.CTHULHU ? 'gameover-panel glitch-panel' : 'gameover-panel'
     );
     document.getElementById('againBtn').addEventListener('click', () => {
       // Fall back to calibration only if no thresholds exist for this session.
@@ -399,9 +504,10 @@ export async function startGame(mode = 'camera', opts = {}) {
     return c;
   }
 
-  // Compose a portrait share card: the failure frame behind a dark scrim, with
-  // the game name and a stat block. Returns a canvas ready to download.
-  function buildResultCard(failCanvas, s) {
+  // Compose a portrait share card: the failure frame (or a fixed ending image)
+  // behind a dark scrim, with the game name and a stat block. Returns a canvas
+  // ready to download.
+  function buildResultCard(photo, s) {
     const W = 720;
     const H = 1080;
     const card = document.createElement('canvas');
@@ -410,11 +516,13 @@ export async function startGame(mode = 'camera', opts = {}) {
     const ctx = card.getContext('2d');
     ctx.fillStyle = '#162a29';
     ctx.fillRect(0, 0, W, H);
-    if (failCanvas) {
-      const scale = Math.max(W / failCanvas.width, H / failCanvas.height);
-      const dw = failCanvas.width * scale;
-      const dh = failCanvas.height * scale;
-      ctx.drawImage(failCanvas, (W - dw) / 2, (H - dh) / 2, dw, dh);
+    if (photo) {
+      const w = photo.naturalWidth || photo.width || W;
+      const h = photo.naturalHeight || photo.height || H;
+      const scale = Math.max(W / w, H / h);
+      const dw = w * scale;
+      const dh = h * scale;
+      ctx.drawImage(photo, (W - dw) / 2, (H - dh) / 2, dw, dh);
       ctx.fillStyle = 'rgba(10,20,20,0.55)';
       ctx.fillRect(0, 0, W, H);
     }
@@ -423,26 +531,25 @@ export async function startGame(mode = 'camera', opts = {}) {
     // so the canvas type needs to be about twice the on-screen target.
     ctx.textAlign = 'center';
     ctx.fillStyle = '#f3b66c';
-    ctx.font = '700 42px "Press Start 2P", monospace';
+    ctx.font = '700 42px "Press Start 2P", "Fusion Pixel 12", monospace';
     // maxWidth keeps the enlarged type inside the card even when the pixel
     // webfonts are unavailable and a wider monospace fallback is used.
-    ctx.fillText('EXPRESSION', W / 2, 112, W - 120);
-    ctx.fillText('FEEDING', W / 2, 168, W - 120);
+    ctx.fillText(t('titleLine1'), W / 2, 112, W - 120);
+    ctx.fillText(t('titleLine2'), W / 2, 168, W - 120);
     ctx.fillStyle = '#f5f0df';
-    ctx.font = '700 58px "VT323", monospace';
-    ctx.fillText('Feeding Results', W / 2, 238, W - 120);
-    // Per-run result label; 'The Crush' is only a placeholder for now.
-    ctx.fillText(s.resultTitle || 'The Crush', W / 2, 310, W - 120);
-    // Game Over only fires at MAX_DISCOMFORT, so a "final discomfort" row
-    // would always read 100/100 and carry no information.
+    ctx.font = '700 58px "VT323", "Fusion Pixel 12", monospace';
+    ctx.fillText(t('cardResultsTitle'), W / 2, 238, W - 120);
+    ctx.fillText(s.resultTitle, W / 2, 310, W - 120);
+    // A "final discomfort" row would carry little information: most runs end
+    // at 100, while the six-blink ending stops early.
     const rows = [
-      ['SCORE', String(s.score)],
-      ['SURVIVED', `${s.seconds}s`],
-      ['BAD BITES', String(s.wrongEats)],
-      ['MAX COMBO', `x${s.maxCombo}`],
+      [t('cardScore'), String(s.score)],
+      [t('cardSurvived'), t('cardSeconds', { n: s.seconds })],
+      [t('cardBadBites'), String(s.wrongEats)],
+      [t('cardMaxCombo'), `x${s.maxCombo}`],
     ];
     ctx.textAlign = 'left';
-    ctx.font = '600 50px "VT323", monospace';
+    ctx.font = '600 50px "VT323", "Fusion Pixel 12", monospace';
     let y = 400;
     for (const [k, v] of rows) {
       ctx.fillStyle = '#f5f0df';
@@ -474,9 +581,15 @@ export async function startGame(mode = 'camera', opts = {}) {
     if (faceLost) state.closedSince = 0;
     const face = faceLost ? null : state.lastCategories;
     const hold = eyeHold.update({ inferred: detection.inferred, closed: detection.freshVideoFrame !== false && !!fresh && eyesClosed(fresh, state.thresholds, detection.eyeGeometry), now, durationMs: state.thresholds?.baseline.eyeHoldMs ?? 500 });
-    let expr = classifyExpression(face, state.thresholds, state.eyeGeometry);
-    expr = protectedEyeExpression(expr, isDemo || hold.ready);
+    const rawExpr = classifyExpression(face, state.thresholds, state.eyeGeometry);
+    const expr = protectedEyeExpression(rawExpr, isDemo || hold.ready);
     setBadge(faceLost ? 'none' : expr);
+    state.lastFaceLost = faceLost;
+    // Once the player stops shutting their eyes / vanishing for the first time,
+    // the frenzy has five seconds left, even if they hide again afterwards.
+    if (state.cthulhu && !state.cthulhuExitAt && !faceLost && rawExpr !== EXPRESSIONS.BLINK) {
+      state.cthulhuExitAt = now + 5000;
+    }
 
     if (state.phase === 'serving') {
       const progress = Math.min(1, (now - state.phaseStart) / state.phaseDuration);
@@ -504,10 +617,11 @@ export async function startGame(mode = 'camera', opts = {}) {
     } else if (state.phase === 'result') {
       el.spoon.style.opacity = '0.25';
       if (now - state.phaseStart >= state.phaseDuration) {
-        if (state.discomfort >= SCORING.MAX_DISCOMFORT) gameOver();
+        if (!state.cthulhu && state.discomfort >= SCORING.MAX_DISCOMFORT) gameOver();
         else startRound();
       }
     }
+    if (state.cthulhu && state.cthulhuExitAt && now >= state.cthulhuExitAt) void gameOver();
 
     // Game over is decided when a result/feedback phase ends, so a maxed-out
     // rescue still gets to play before the screen switches.
@@ -516,18 +630,28 @@ export async function startGame(mode = 'camera', opts = {}) {
     if (state.phase !== 'gameover') requestAnimationFrame(loop);
   }
 
+  // --- language switching --------------------------------------------------
+  // The 中/EN toggle switches the whole game, including the live HUD.
+  onLanguageChange(() => {
+    shownExpr = null; // force a badge rebuild in the new language
+    if (state.item) el.item.alt = foodText(state.item, getLanguage()).name;
+    if (state.combo >= 2) setCombo();
+    if (!el.overlay.hidden && state.phase === 'gameover') gameOver();
+    else rerenderOverlay?.();
+  });
+
   // --- boot ----------------------------------------------------------------
   try {
     if (isDemo) {
       state.thresholds = { baseline: getBaseline(), profile: null }; // demo bypasses player correction
       hideOverlay();
-      setSubtitle('S smile · F refusal · V vomit · B lidded · release = relaxed');
+      setSubtitle(t('demoHint'));
       state.startTime = performance.now();
       startRound();
       requestAnimationFrame(loop);
       return;
     }
-    showOverlay('<h1>Expression Feeding</h1><p>Opening camera and loading model…</p>');
+    showOverlay(`<h1>${t('appTitle')}</h1><p>${t('loadingCamera')}</p>`);
     const stream = await openCamera();
     el.video.srcObject = stream;
     await el.video.play();
@@ -540,8 +664,8 @@ export async function startGame(mode = 'camera', opts = {}) {
     requestAnimationFrame(loop);
   } catch (err) {
     showOverlay(
-      `<h1>Could not start</h1><p>${err.message || err}</p>` +
-      `<p>Grant camera permission and open this in a WebRTC-capable browser (desktop Chrome/Edge).</p>`
+      `<h1>${t('couldNotStart')}</h1><p>${err.message || err}</p>` +
+      `<p>${t('cameraHelp')}</p>`
     );
   }
 }

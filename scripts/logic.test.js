@@ -6,10 +6,12 @@ import {
   eyesClosed as eyesClosedRaw,
   intentFromExpression as intentRaw,
   judge,
+  comboContinues,
   buildThresholds,
   speedForLevel,
   applyRescue,
   randomItem,
+  ITEMS,
   OUTCOME,
   INTENT,
   EXPRESSIONS,
@@ -194,8 +196,8 @@ test('speedForLevel accelerates with level but clamps to a fair minimum', () => 
 
 test('applyRescue stays within 0..MAX and reflects success/failure', () => {
   assert.equal(applyRescue(0, true), 0); // relief cannot go negative
-  assert.equal(applyRescue(25, true), 10); // 25 - 15
-  assert.equal(applyRescue(25, false), 35); // 25 + 10
+  assert.equal(applyRescue(10, true), 5); // forced feed 10 - relief 5 = net 5
+  assert.equal(applyRescue(10, false), 20); // forced feed 10 + fail 10 = net 20
   assert.equal(applyRescue(99, false), SCORING.MAX_DISCOMFORT);
 });
 
@@ -203,4 +205,43 @@ test('randomItem always picks a catalogue entry', () => {
   const seen = new Set();
   for (let i = 0; i < 50; i++) seen.add(randomItem().id);
   assert.ok(seen.size > 1);
+});
+
+test('surreal food is edible with a large bonus and a small discomfort cost', () => {
+  const surreal = { eatable: true, category: 'surreal_food' };
+  const out = judge(surreal, INTENT.ACCEPT);
+  assert.equal(out.type, OUTCOME.SURREAL_ACCEPT);
+  assert.ok(out.scoreDelta > SCORING.CORRECT_POINTS);
+  assert.ok(out.discomfortDelta > 0 && out.discomfortDelta < SCORING.WRONG_EAT_DISCOMFORT);
+  assert.equal(judge(surreal, INTENT.DEFEND).type, OUTCOME.DEFENDED);
+  assert.equal(judge({ eatable: true }, INTENT.ACCEPT).type, OUTCOME.CORRECT_ACCEPT);
+});
+
+test('surreal food keeps the combo only on acceptance and refusal', () => {
+  const surreal = { eatable: true, category: 'surreal_food' };
+  const accept = judge(surreal, INTENT.ACCEPT);
+  const reject = judge(surreal, INTENT.REJECT);
+  assert.equal(accept.type, OUTCOME.SURREAL_ACCEPT);
+  assert.equal(reject.type, OUTCOME.SURREAL_REJECT);
+  assert.equal(reject.scoreDelta, 0);
+  assert.equal(reject.discomfortDelta, 0);
+  assert.equal(comboContinues(accept), true);
+  assert.equal(comboContinues(reject), true);
+  assert.equal(comboContinues(judge(surreal, INTENT.NEUTRAL)), false);
+  assert.equal(comboContinues(judge(surreal, INTENT.DEFEND)), false);
+  // Other food keeps its old behaviour.
+  assert.equal(comboContinues(judge({ eatable: true }, INTENT.REJECT)), false);
+  assert.equal(comboContinues(judge({ eatable: false }, INTENT.REJECT)), true);
+  assert.equal(comboContinues(judge({ eatable: true }, INTENT.ACCEPT)), true);
+});
+
+test('every catalogue item has English text and a local PNG', () => {
+  assert.ok(ITEMS.length > 0);
+  assert.equal(new Set(ITEMS.map((i) => i.id)).size, ITEMS.length);
+  for (const it of ITEMS) {
+    assert.match(it.image, /^assets\/food\/[a-z0-9-]+\.png$/);
+    assert.ok(it.name && it.line);
+    assert.equal(typeof it.eatable, 'boolean');
+    assert.ok(['food', 'foreign_object', 'lookalike', 'surreal_food'].includes(it.category));
+  }
 });

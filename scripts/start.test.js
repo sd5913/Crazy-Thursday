@@ -19,8 +19,9 @@ test('web launcher rejects invalid ports', async () => {
   assert.match(error, /PORT must be/);
 });
 
-// The launcher copies src/ into www/ before it starts; on Windows that copy
-// can take >10s, so keep the timeout well above the observed cold-start time.
+// The launcher syncs src/ into www/ before it starts. Builds are incremental,
+// but a cold start on Windows still copies the bundled assets; keep the timeout
+// above that worst case under parallel tests.
 test('web launcher builds outside repository cwd and serves modules', { timeout: 30000 }, async (t) => {
   const child = spawn(process.execPath, [fileURLToPath(entry)], {
     cwd: tmpdir(),

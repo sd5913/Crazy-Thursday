@@ -3,6 +3,8 @@
 // `node --test`. Expression detection lives in face.js; this file only turns
 // blendshape scores and items into game outcomes.
 
+import { FOOD_ITEMS } from './food-catalogue.js';
+
 export function nextMessage(count) {
   return `Signal ${count} sent. Make the next one yours.`;
 }
@@ -25,6 +27,8 @@ export const INTENT = {
 export const OUTCOME = {
   CORRECT_ACCEPT: 'correctAccept',
   CORRECT_REJECT: 'correctReject',
+  SURREAL_ACCEPT: 'surrealAccept',
+  SURREAL_REJECT: 'surrealReject',
   DECLINED_FOOD: 'declinedFood',
   WRONG_EAT: 'wrongEat',
   DEFENDED: 'defended',
@@ -32,12 +36,16 @@ export const OUTCOME = {
 
 export const SCORING = {
   CORRECT_POINTS: 10,
-  WRONG_EAT_DISCOMFORT: 25,
+  // Surreal food is edible but risky: a large reward with a small discomfort
+  // cost, so farming it still ends the run. Tune these two values together.
+  SURREAL_POINTS: 30,
+  SURREAL_DISCOMFORT: 5,
+  WRONG_EAT_DISCOMFORT: 10,
   // Eye-defense blocks the bite but is not free: dodging meals forever must
   // still build towards Game Over.
   DEFEND_DISCOMFORT: 5,
-  RESCUE_SUCCESS_RELIEF: 15, // net discomfort on a good puke = 10
-  RESCUE_FAIL_PENALTY: 10, // net discomfort on a failed puke = 35
+  RESCUE_SUCCESS_RELIEF: 5, // net discomfort on a good puke = 5
+  RESCUE_FAIL_PENALTY: 10, // net discomfort on a failed puke = 20 (forced feed = 20 too)
   MAX_DISCOMFORT: 100,
 };
 
@@ -184,14 +192,23 @@ export function judge(item, intent) {
   if (intent === INTENT.DEFEND) {
     return { type: OUTCOME.DEFENDED, scoreDelta: 0, discomfortDelta: SCORING.DEFEND_DISCOMFORT };
   }
-  // Eating only happens on an explicit ACCEPT (smile). A frown or no expression
-  // means the patient did not take the bite, so a good food with no expression
-  // is simply declined (no points), while a bad food with no expression is still
-  // eaten -- the player failed to refuse it (just like the old default).
+  // Eating only happens on an explicit ACCEPT (smile). A frown means the bite
+  // was not taken, so a good food with no expression is simply declined, while
+  // a bad food with no expression is still eaten (the player failed to refuse).
   if (intent === INTENT.ACCEPT) {
+    // Surreal food is edible, but its reward and cost come from its own rule
+    // rather than the plain eatable / inedible split.
+    if (item.category === 'surreal_food') {
+      return { type: OUTCOME.SURREAL_ACCEPT, scoreDelta: SCORING.SURREAL_POINTS, discomfortDelta: SCORING.SURREAL_DISCOMFORT };
+    }
     return item.eatable
       ? { type: OUTCOME.CORRECT_ACCEPT, scoreDelta: SCORING.CORRECT_POINTS, discomfortDelta: 0 }
       : { type: OUTCOME.WRONG_EAT, scoreDelta: 0, discomfortDelta: SCORING.WRONG_EAT_DISCOMFORT };
+  }
+  // Refusing surreal food is a deliberate, valid reaction: no points and no
+  // discomfort, but the streak survives (see comboContinues).
+  if (item.category === 'surreal_food' && intent === INTENT.REJECT) {
+    return { type: OUTCOME.SURREAL_REJECT, scoreDelta: 0, discomfortDelta: 0 };
   }
   if (!item.eatable && intent === INTENT.REJECT) {
     return { type: OUTCOME.CORRECT_REJECT, scoreDelta: SCORING.CORRECT_POINTS, discomfortDelta: 0 };
@@ -201,6 +218,16 @@ export function judge(item, intent) {
   }
   // Not eaten: edible refused/skipped, or inedible properly refused.
   return { type: OUTCOME.DECLINED_FOOD, scoreDelta: 0, discomfortDelta: 0 };
+}
+
+// A deliberate, valid reaction keeps the streak. Surreal food is special:
+// refusing it counts as valid even though it scores nothing, while any other
+// reaction (no expression, eye defense, wrong bite) breaks the combo.
+export function comboContinues(outcome) {
+  return outcome.type === OUTCOME.CORRECT_ACCEPT
+    || outcome.type === OUTCOME.CORRECT_REJECT
+    || outcome.type === OUTCOME.SURREAL_ACCEPT
+    || outcome.type === OUTCOME.SURREAL_REJECT;
 }
 
 // Difficulty is a level that the game raises on a correct play and lowers on a
@@ -231,23 +258,11 @@ export function applyRescue(currentDiscomfort, success) {
   return Math.max(0, Math.min(SCORING.MAX_DISCOMFORT, currentDiscomfort + delta));
 }
 
-// The starter catalogue: 8 items, 3 edible + 5 not. `emoji` is the spoon prop,
-// `name` is the label, `line` is the nurse's deadpan bedside manner.
-export const ITEMS = [
-  { id: 'congee', name: 'Congee', emoji: '🥣', eatable: true, line: 'Still warm. Probably.' },
-  { id: 'pudding', name: 'Pudding', emoji: '🍮', eatable: true, line: 'Sugar fixes everything. Maybe.' },
-  { id: 'cake', name: 'Cake', emoji: '🍰', eatable: true, line: 'Happy birthday. Whoever you are.' },
-  { id: 'mustard', name: 'A spoonful of mustard', emoji: '🥄', eatable: false, line: 'Some vitamins. Straight.' },
-  { id: 'lemon', name: 'Sour lemon', emoji: '🍋', eatable: false, line: 'Detox. You will cry either way.' },
-  { id: 'chili', name: 'Chili sauce', emoji: '🌶️', eatable: false, line: 'Mild.' },
-  { id: 'cactus', name: 'Cactus', emoji: '🌵', eatable: false, line: 'Eat your vegetables.' },
-  { id: 'soap', name: 'Chocolate-shaped soap', emoji: '🧼', eatable: false, line: 'New chocolate flavor.' },
-];
+// The bilingual runtime catalogue is generated from the single content source
+// food-assets/catalogue.json by `npm run build` (which runs food:sync first).
+// Gameplay reads name/line (English); *_zh and foodText() back a future locale switch.
+export const ITEMS = FOOD_ITEMS;
 
 export function randomItem(rng = Math.random) {
   return ITEMS[Math.floor(rng() * ITEMS.length)];
 }
-
-// Each item points at its placeholder art (src/assets/food/<id>.svg); the art
-// team replaces the SVG (or repoints `image` to a PNG) without touching logic.
-for (const it of ITEMS) it.image = `assets/food/${it.id}.svg`;

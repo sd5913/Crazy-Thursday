@@ -13,6 +13,7 @@
 ## Gameplay feedback
 
 - Correct acceptance/refusal scores and accelerates the game; errors reset the combo.
+- Surreal food is the exception: both accepting and refusing it keep the combo. Accepting also scores and adds a little discomfort; refusing scores nothing and does not accelerate the game. Any other reaction (no expression, eye defense) breaks the streak.
 - Closed-eye defense blocks feeding but adds discomfort, clears combo and increases speed; it is not unlimited free survival.
 - Existing scoring constants and timings live in `src/logic.js`; this document does not duplicate the balancing table.
 

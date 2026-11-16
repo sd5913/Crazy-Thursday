@@ -17,7 +17,7 @@
   padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
   background: var(--bg);
   color: #f5f0df;
-  font: 1.15rem/1.45 'Courier New', monospace;
+  font: 1.15rem/1.45 'Courier New', 'Fusion Pixel 12', monospace;
 }
 .face-debug h1 { font: 1.2rem var(--pixel-display); }
 .face-debug h2 { font-size: 1.2rem; margin-block: 1rem .5rem; }
@@ -77,8 +77,8 @@
      --pixel-body is the readable pixel font for longer text (HUD, subtitle,
      panel, share-card stats). Both load from local assets/fonts through index.html;
      'Courier New' is only an offline fallback, never the intended look. */
-  --pixel-display: 'Press Start 2P', 'Courier New', monospace;
-  --pixel-body: 'VT323', 'Courier New', monospace;
+  --pixel-display: 'Press Start 2P', 'Fusion Pixel 12', 'Courier New', monospace;
+  --pixel-body: 'VT323', 'Fusion Pixel 12', 'Courier New', monospace;
   --ui-font: var(--pixel-body);
   /* Shared type scale: the top title and the bottom badge main line are the
      same size, while the left/right status readouts are one step smaller. */
@@ -181,6 +181,8 @@ body { margin: 0; }
   background: rgba(255,255,255,.15);
   border-radius: 8px; overflow: hidden;
 }
+/* The frenzy bar is meant to break out of its track and off the screen. */
+.cthulhu-mode .discomfort .bar { overflow: visible; }
 #discomfortFill {
   height: 100%; width: 0%;
   background: linear-gradient(90deg, #f3b66c, var(--danger));
@@ -271,6 +273,8 @@ body { margin: 0; }
   z-index: 2;
   pointer-events: none;
 }
+/* One type scale for every line: the bubble must not resize text by length.
+   Padding on all four sides keeps two-line nurse lines clear of the artwork. */
 .subtitle {
   position: absolute;
   inset: 0;
@@ -278,20 +282,15 @@ body { margin: 0; }
   z-index: 3;
   display: grid;
   place-items: center;
-  padding: 0 .6rem;
+  padding: 12px 24px;
   text-align: center;
-  font-size: clamp(1.15rem, 4.4vw, 3rem);
-  line-height: 1.05;
+  font-size: clamp(1.25rem, 2.8vw, 1.9rem);
+  line-height: 1.15;
   font-weight: 700;
   font-family: var(--pixel-body);
   text-shadow: 0 2px 6px rgba(0,0,0,.7);
   overflow-wrap: anywhere;
 }
-/* Long one-off legends (the keyboard demo intro) need one step down, not a
-   tiny fixed size. Every breakpoint overrides this rule with the SAME
-   specificity (.subtitle.long), otherwise it would outrank the plain
-   .subtitle bump and keep long lines unreadable on phones. */
-.subtitle.long { font-size: clamp(1.15rem, 2.8vw, 1.75rem); line-height: 1.1; }
 /* Fixed width: the box no longer swings between a narrow "GAG" and a wide
    "NO FACE / not detected" state, so its right edge always stays put. */
 .badge {
@@ -366,6 +365,27 @@ body { margin: 0; }
   padding: var(--hud-top) var(--hud-gutter) var(--hud-bottom);
 }
 .overlay[hidden] { display: none; }
+/* The shell hugs the panel so the language toggle can pin to the window's
+   top-right corner and survive showOverlay() replacing the panel's HTML.
+   The button sits fully INSIDE the panel (in its top padding whitespace),
+   compact enough to clear the centred title lines. */
+.panel-shell { position: relative; }
+.lang-toggle {
+  position: absolute;
+  top: .45rem;
+  right: .55rem;
+  z-index: 6;
+  border: 2px solid var(--accent);
+  background: #1d3431;
+  color: var(--accent);
+  font: 700 clamp(1.05rem, 3vw, 1.3rem)/1.15 var(--pixel-body);
+  letter-spacing: .04em;
+  padding: .35rem 1rem;
+  border-radius: .45rem;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(0,0,0,.35);
+}
+.lang-toggle:hover { background: var(--accent); color: #162a29; }
 .panel {
   width: min(90vw, 480px);
   max-height: calc(100vh - 2 * var(--hud-gutter));
@@ -378,8 +398,10 @@ body { margin: 0; }
   text-align: center;
   box-shadow: 0 20px 50px rgba(0,0,0,.5);
 }
-.panel h1 { margin: 0 0 1rem; font-family: var(--pixel-body); font-weight: 400; font-size: clamp(2rem, 8vw, 3.6rem); letter-spacing: .02em; color: var(--accent); text-shadow: 0 2px 10px rgba(0,0,0,.4); }
+.panel h1 { margin: .9rem 0 1rem; font-family: var(--pixel-body); font-weight: 400; font-size: clamp(2rem, 8vw, 3.6rem); letter-spacing: .02em; color: var(--accent); text-shadow: 0 2px 10px rgba(0,0,0,.4); }
 .panel p { font-size: clamp(1.15rem, 4vw, 1.6rem); line-height: 1.35; opacity: .9; }
+/* Start-screen copy is pixel type too: VT323 for Latin, Fusion Pixel for Han. */
+.panel > p[data-i18n='startTagline'], .panel .privacy-note { font-family: var(--pixel-body); }
 .panel button, #startBtn {
   margin-top: 1.4rem;
   max-width: 100%;
@@ -402,8 +424,8 @@ body { margin: 0; }
 }
 #demoBtn {
   background: #e2b371;
-  font-size: clamp(1.05rem, 3.7vw, 1.38rem);
-  padding: 1.05rem 1.5rem;
+  font-size: clamp(1rem, 3.4vw, 1.25rem);
+  padding: 1.05rem 1.2rem;
   box-shadow: 0 4px 12px rgba(0,0,0,.28);
 }
 #faceDebugBtn {
@@ -412,6 +434,15 @@ body { margin: 0; }
   padding: 1rem 1.4rem;
   box-shadow: 0 3px 10px rgba(0,0,0,.22);
 }
+/* Demo + Debug share one row: two equal columns keep them side by side at
+   every width; long labels wrap inside their own column instead of stacking. */
+.menu-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: .9rem;
+  margin-top: 1.4rem;
+}
+.menu-row button { margin-top: 0; min-width: 0; }
 /* The default start screen no longer shows a settings note; the privacy
    hint sits under the buttons so it cannot be overwritten by that note. */
 #gameSettingsStatus:empty { display: none; }
@@ -445,7 +476,23 @@ body { margin: 0; }
    gets its own row. Result-panel type is a step larger than the start /
    calibration panels on both desktop and phones. */
 .card-actions + .card-actions { margin-top: .85rem; }
+/* Enlarged debug-page language switch to match the menu lang-toggle. */
+#debugLanguage {
+  font: 700 1.05rem var(--pixel-body);
+  letter-spacing: .04em;
+  padding: .5rem 1.1rem;
+}
 .gameover-panel h1 { font-size: clamp(2.6rem, 9vw, 4.4rem); }
+/* The corrupted name is Latin pixel type with combining marks overlaid by a
+   fallback font. Keep the base face pixelated and the type small enough that
+   the scattered marks stay inside the panel. */
+.gameover-panel.glitch-panel h1 {
+  font-family: var(--pixel-body);
+  font-size: clamp(1rem, 2.9vw, 1.55rem);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
 /* Type stays put; only the yellow frame shrinks closer to the words so the
    buttons no longer crowd each other. */
 .gameover-panel .card-actions button {
@@ -466,10 +513,21 @@ body { margin: 0; }
   max-width: 100%;
   justify-self: center;
 }
+/* Ending title subtitle: same muted pixel type as the share note, a touch
+   smaller so one concise line fits under even the longest ending name. */
+.gameover-panel .result-hint {
+  margin: -.4rem 0 .8rem;
+  color: #6b8e87;
+  font-family: var(--pixel-body); /* CJK falls through to Fusion Pixel 12 */
+  font-size: clamp(1.15rem, 3.2vw, 1.4rem);
+  line-height: 1.25;
+  opacity: 1;
+}
 /* Outside the PNG on purpose: saving the card never includes this line. */
 .gameover-panel .share-note {
   margin: .9rem 0 0;
   color: #6b8e87;
+  font-family: var(--pixel-body); /* Chinese needs the same pixel fallback */
   font-size: clamp(1.55rem, 4.6vw, 2.2rem);
   line-height: 1.1;
   opacity: 1;
@@ -496,6 +554,9 @@ body { margin: 0; }
   /* Two centred lines ("Expression" / "Feeding") instead of one tiny line.
      That taller row leaves room for the bar, so it keeps its normal width. */
   .game-title span { display: block; }
+  /* The enlarged lang-toggle eats into the panel's slim top padding here, so
+     push every panel heading below the button zone. */
+  .panel h1 { margin-top: 2.8rem; }
   .game-title {
     position: static;
     grid-column: 2;
@@ -521,19 +582,16 @@ body { margin: 0; }
   .badge { grid-column: 1; grid-row: 1; align-self: end; }
   .bubble { grid-column: 2; grid-row: 1; width: min(44vw, 560px); }
 }
-/* Phones: bigger readouts and a bigger subtitle; a taller bubble keeps long
-   lines inside after the font bump. The .long rule MUST repeat the bumped
-   scale here (same specificity) or it keeps the small base size. */
+/* Phones: one shared, slightly smaller size plus a taller bubble, so even the
+   longest two-line legend stays clear of the artwork on narrow screens. */
 @media (max-width: 600px) {
   .badge { padding: .5rem .7rem; gap: .2rem; }
   .bubble { aspect-ratio: 640 / 190; }
-  .subtitle { font-size: clamp(1.95rem, 7.4vw, 2.45rem); line-height: 1; padding: 0 .5rem; }
-  .subtitle.long { font-size: clamp(1.4rem, 4.6vw, 1.8rem); line-height: 1.05; padding: 0 .45rem; }
+  .subtitle { font-size: clamp(1.35rem, 4.8vw, 1.8rem); line-height: 1.15; padding: 12px 20px; }
   .result-card { width: min(70vw, 300px); }
 }
-/* On 320-390px phones the enlarged subtitle wraps to three lines, which no
-   longer fits a bubble sized purely by aspect-ratio. Give upright narrow
-   windows a height floor; short landscape windows keep their own rule below. */
+/* Upright narrow windows get a height floor so wrapped lines still fit;
+   short landscape windows keep their own rule below. */
 @media (max-width: 600px) and (min-height: 481px) {
   .bubble { min-height: 118px; }
 }
@@ -561,8 +619,7 @@ body { margin: 0; }
   .bubble { grid-column: 2; grid-row: 1; width: min(100%, 420px); aspect-ratio: 640 / 155; }
   .badge-main { font-size: .85rem; }
   .badge-sub { font-size: .8rem; }
-  .subtitle { font-size: clamp(1.5rem, 5vh, 2rem); line-height: 1; }
-  .subtitle.long { font-size: clamp(1.3rem, 4vh, 1.65rem); line-height: 1.05; }
+  .subtitle { font-size: clamp(1.25rem, 4vh, 1.6rem); line-height: 1.1; padding: 8px 20px; }
   .combo { bottom: calc(100% - .6rem); font-size: .9rem; }
   .spoon { width: min(38vw, 360px); }
   .panel { padding: 1rem; }
@@ -575,7 +632,7 @@ body { margin: 0; }
   .discomfort { margin-top: 0; }
 }
 /* Narrow AND short: the fixed-width badge leaves the bubble only ~280px, so
-   an enlarged long legend needs more height than the plain short-window rule. */
+   wrapped lines need more height than the plain short-window rule. */
 @media (max-width: 600px) and (max-height: 480px) {
   .bubble { aspect-ratio: 640 / 220; }
 }

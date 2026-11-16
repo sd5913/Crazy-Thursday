@@ -9,24 +9,41 @@
   "scripts": {
     "start": "node scripts/start.mjs",
     "build": "node scripts/build.mjs",
+    "food:sync": "node scripts/sync-food-assets.mjs",
+    "fonts:cjk": "node scripts/build-pixel-cjk-font.mjs",
     "test": "node --test",
     "android:sync": "npm run build && cap sync android",
     "desktop": "npm run build && electron .",
     "dist:win": "npm run build && electron-builder --win",
     "dist:mac": "npm run build && electron-builder --mac"
   },
-  "dependencies": {"@capacitor/android": "8.5.3", "@capacitor/core": "8.5.3"},
+  "dependencies": {
+    "@capacitor/android": "8.5.3",
+    "@capacitor/core": "8.5.3"
+  },
   "devDependencies": {
     "@capacitor/cli": "8.5.3",
     "electron": "^31.0.0",
-    "electron-builder": "^24.13.3"
+    "electron-builder": "^24.13.3",
+    "fontkit": "^3.0.0",
+    "subset-font": "^2.9.0"
   },
-  "engines": {"node": ">=22"},
+  "engines": {
+    "node": ">=22"
+  },
   "build": {
     "appId": "com.crazythursday.app",
     "productName": "Expression Feeding",
-    "files": ["www/**/*", "desktop/**/*"],
-    "win": {"target": "nsis"},
-    "mac": {"target": "dmg", "category": "public.app-category.games"}
+    "files": [
+      "www/**/*",
+      "desktop/**/*"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.games"
+    }
   }
 }

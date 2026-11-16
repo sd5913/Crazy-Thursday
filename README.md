@@ -115,7 +115,7 @@ own destination, tokens and commands.
 
 ## Artwork and calibration assets
 
-Runtime image slots live in `src/assets/` and are copied to `www/assets/` by the build.
+Non-food UI image slots live in `src/assets/` and are copied to `www/assets/` by the build.
 
 | Slot | Current source |
 | --- | --- |
@@ -123,12 +123,32 @@ Runtime image slots live in `src/assets/` and are copied to `www/assets/` by the
 | Spoon | `src/assets/spoon.png` |
 | HUD | `src/assets/hud.svg` |
 | Speech bubble | `src/assets/hint.svg` |
-| Eight food items | `src/assets/food/<id>.svg`, referenced from `src/logic.js` |
+| Food items | `food-assets/png/<category>/<id>.png` (only editable copy; exported to `www/assets/food/` by the build) |
 | Calibration illustrations | `src/assets/calibration/`, shared by game and Debug |
 
 Replace an image at the same path without changing game logic. If the format or path changes, update the relevant image reference in `src/index.html`, `src/logic.js` or `src/face-calibration.js`. SVG, PNG, JPEG and WebP are browser-supported; SVG is not mandatory. Background images use cover sizing; calibration images preserve their aspect ratio.
 
-`node scripts/gen-placeholders.mjs` regenerates placeholder assets and can overwrite artwork. Run it only deliberately, then rebuild with `npm run build`. See the [calibration artwork guide](src/assets/calibration/README.md).
+### Food assets: one source folder
+
+`food-assets/` is the only editable food resource. It contains everything:
+
+- `catalogue.json` — all 107 items with English and Chinese names/lines, the four category definitions (`categories`), and the integration rules.
+- `png/<category>/<id>.png` — all 107 images, one folder per food category, filename matching the item id.
+
+There is no second editable copy. `src/food-catalogue.js` (bilingual runtime data) and `www/` (packaged output, gitignored) are generated; never edit them by hand. `www/assets/food/<id>.png` is the flattened export needed by the web/Android/Electron bundle — the only permitted duplicate.
+
+Edit `food-assets/catalogue.json` or drop a PNG into the matching `png/<category>/` folder, then run `npm run build` (or just `npm start`, which builds first). The build validates ids, categories, counts, bilingual text and orphan/missing images, regenerates the runtime data and exports the images. `npm run food:sync` performs validation and data generation only, without the image export.
+
+The shipped `src/food-catalogue.js` carries **both languages** in every item: `name`/`line` are English, `name_zh`/`line_zh` are Chinese, matching `catalogue.json` one-to-one. Gameplay still reads `name`/`line`, so the interface is unchanged. For a future global language switch, use the single extraction point instead of touching fields directly:
+
+```js
+import { FOOD_LOCALES, foodText } from './food-catalogue.js';
+const { name, line } = foodText(item, globalLanguage); // 'en' | 'zh', unknown falls back to English
+```
+
+`FOOD_LOCALES` lists supported languages; the language codes follow the existing debug UI convention (`'en'`/`'zh'`).
+
+`node scripts/gen-placeholders.mjs` regenerates only the background, HUD and hint placeholders; it never touches food art. Run it deliberately, then rebuild with `npm run build`. See the [calibration artwork guide](src/assets/calibration/README.md).
 
 ## Team development history
 

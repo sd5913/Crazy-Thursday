@@ -10,36 +10,41 @@
 
   <div class="hud">
     <img class="hud-bg" src="assets/hud.svg" alt="">
-    <div class="game-title"><span>Expression</span> <span>Feeding</span></div>
-    <div class="score">SCORE <span id="score">0</span></div>
+    <div class="game-title"><span data-i18n="titleLine1">Expression</span> <span data-i18n="titleLine2">Feeding</span></div>
+    <div class="score"><span data-i18n="hudScore">SCORE</span> <span id="score">0</span></div>
     <div class="discomfort">
-      <span>DISCOMFORT</span>
+      <span data-i18n="hudDiscomfort">DISCOMFORT</span>
       <div class="bar"><div id="discomfortFill"></div></div>
     </div>
   </div>
 
   <div class="scene">
-    <div class="spoon" id="spoon"><img class="spoon-img" src="assets/spoon.png" alt=""><img class="item" id="item" src="assets/food/congee.svg" alt="food"></div>
+    <div class="spoon" id="spoon"><img class="spoon-img" src="assets/spoon.png" alt=""><img class="item" id="item" src="assets/food/congee.png" alt="food"></div>
   </div>
 
   <div class="bottom-hud">
-    <div id="exprBadge" class="badge" data-expr="none"><span class="badge-main">NO FACE</span><span class="badge-sub">not detected</span></div>
+    <div id="exprBadge" class="badge" data-expr="none"><span class="badge-main" data-i18n="face.none">NO FACE</span><span class="badge-sub" data-i18n="badge.notDetected">not detected</span></div>
     <div class="bubble">
       <img id="hintBubble" class="hint-bubble" src="assets/hint.svg" alt="">
-      <div id="subtitle" class="subtitle">Loading…</div>
+      <div id="subtitle" class="subtitle" data-i18n="loading">Loading…</div>
       <div id="combo" class="combo" hidden>combo ×0</div>
     </div>
   </div>
 
   <div id="overlay" class="overlay">
-    <div class="panel" id="panel">
-      <h1>Expression Feeding</h1>
-      <p>Smile to accept, lower your brows or mouth corners to refuse, open your mouth to purge.</p>
-      <button id="startBtn" type="button">Start &amp; Calibrate (needs camera)</button>
-      <button id="demoBtn" type="button">Keyboard Demo (no camera)</button>
-      <button id="faceDebugBtn" type="button">Face Debug</button>
-      <p class="privacy-note">The camera is processed locally and never leaves your device.</p>
-      <p id="gameSettingsStatus"></p>
+    <div class="panel-shell">
+      <button id="langBtn" class="lang-toggle" type="button" aria-label="切换到中文">中文</button>
+      <div class="panel" id="panel">
+        <h1 data-i18n="appTitle">Expression Feeding</h1>
+        <p data-i18n="startTagline">Smile to accept, lower your brows or mouth corners to refuse, open your mouth to purge.</p>
+        <button id="startBtn" type="button" data-i18n="startBtn">Start &amp; Calibrate</button>
+        <div class="menu-row">
+          <button id="demoBtn" type="button" data-i18n="demoBtn">Keyboard Demo (no camera)</button>
+          <button id="faceDebugBtn" type="button" data-i18n="faceDebugBtn">Face Debug</button>
+        </div>
+        <p class="privacy-note" data-i18n="privacyNote">The camera is processed locally and never leaves your device.</p>
+        <p id="gameSettingsStatus"></p>
+      </div>
     </div>
   </div>
 </main>
