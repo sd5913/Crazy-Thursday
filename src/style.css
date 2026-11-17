@@ -243,6 +243,10 @@ body { margin: 0; }
   z-index: 2;
 }
 
+/* Chinese only has four short glyphs here, so it can take a larger status-bar
+   title than the eleven-character English one without hitting the readouts. */
+.game-title:lang(zh) { font-size: clamp(1rem, 3.2vw, 2.4rem); }
+
 /* Bottom HUD: the badge and the speech bubble share ONE layout container, so
    they can never overlap. Wide windows place them side by side; narrow and
    short windows stack them (see the media queries at the end of the file). */

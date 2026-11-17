@@ -4,7 +4,7 @@ Updated: 2026-11-13 (Hong Kong, UTC+8)
 
 ## Scope and baseline
 
-- Expression Feeding is the team project in `sd5913/Crazy-Thursday`. Work is confined to this repository.
+- Eat by Face (看脸吃饭, formerly Expression Feeding) is the team project in `sd5913/Crazy-Thursday`. Work is confined to this repository.
 - Main includes `7099486`, tagged `v1.3.0`: diagnostics/input changes and project documentation have been pushed. Offline resources, lip-press display cleanup and sampling progress feedback are subsequent uncommitted changes.
 - The existing camera game, artwork integration, combo, share cards, desktop entry and replay flow predate this working-tree iteration. See [milestones](LOG.md) for commit-backed history.
 

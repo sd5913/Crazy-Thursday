@@ -1,7 +1,15 @@
-# 表情喂食 · 游戏机制规则 / Expression Feeding — Game Rules
+# 看脸吃饭 · 游戏机制规则 / Eat by Face — Game Rules
 
 本文件记录当前版本的完整机制，中英文对照。UI 右上角「中 / EN」可随时切换全站语言。
 This document records the mechanics of the current build, in Chinese and English. The `中 / EN` button in the top-right of the start panel switches the whole game.
+
+### 背景 / Story
+
+- 中文：高位截瘫，脖子以下全线停摆。护士照旧按时投喂，你只剩一张脸能表态——请珍惜这张脸。
+- English: High spinal cord injury: everything below the neck has resigned. The nurse feeds you anyway; your face is now your only way to say anything.
+
+表情的含义不再堆在开始界面，而是在校准的每一步扫描提示中说明（微笑=喂下去；皱眉或撇嘴角=拒绝；张大嘴=催吐；闭眼防御也未必有用）。
+The meaning of each expression is no longer listed on the start screen; it is explained step by step in the calibration hints (smile = accept, frown = refuse, wide mouth = purge, and closed eyes probably will not save you).
 
 ---
 
@@ -29,18 +37,26 @@ This document records the mechanics of the current build, in Chinese and English
 
 | 优先级 | 结果 | 达成条件 | 卡片照片 |
 |---|---|---|---|
-| 1 | 你惊动了V̷̛̪̲̓r̶̢̛̙̎̈́'q̸̨̛̳̊̈́h̷̢̛̹̿l̴̛̫̓̚-Ư̸̢̰̄̈́l̷̛̬̓͋g̸̨̛̞̈́t̷̛̪̓ḧ̶̛͓́ | 连续 6 轮闭眼防御或无脸（可混合），触发后进入无敌模式 | `bg-V̷….jpg` |
-| 2 | 大胃王 | 总分 > 500，且进食得分占总分的比例 > 50% | `aha.jpg` |
-| 3 | 植物人 | 全程没有任何表情反应（闭眼也算表情） | 失败抓拍 |
-| 4 | 变相怪杰 | 本局最高连击 ≥ 20 | `TheMask.jpg` |
-| 5 | 我还能吃… | 超现实食物造成的不适 > 结算时不适的 70% | 失败抓拍 |
-| 6 | 火眼金睛 | 拒绝的异物 > 所端异物的 70%，且至少端出 3 件异物 | 失败抓拍 |
-| 7 | 异食癖 | 异物造成的不适 > 结算时不适的 70% | 失败抓拍 |
-| 8 | 留院观察 | 以上均不满足（兜底） | 失败抓拍 |
+| 1 | ?!67!? | 总分、存活秒数、最高连击任意一项恰好为 67 | `67.jpg` |
+| 2 | 你惊动了V̷̛̪̲̓r̶̢̛̙̎̈́'q̸̨̛̳̊̈́h̷̢̛̹̿l̴̛̫̓̚-Ư̸̢̰̄̈́l̷̛̬̓͋g̸̨̛̞̈́t̷̛̪̓ḧ̶̛͓́ | 连续 6 轮闭眼防御或无脸（可混合），触发后进入无敌模式 | `bg-V̷….jpg` |
+| 3 | 大胃王 | 总分 > 500，且进食得分占总分的比例 > 50% | `aha.jpg` |
+| 4 | 植物人 | 全程没有任何表情反应（闭眼也算表情） | 失败抓拍 |
+| 5 | 变相怪杰 | 本局最高连击 ≥ 20 | `TheMask.jpg` |
+| 6 | 我还能吃… | 超现实食物造成的不适 > 结算时不适的 70% | 失败抓拍 |
+| 7 | 火眼金睛 | 拒绝的异物 > 所端异物的 70%，且至少端出 3 件异物 | `sharpeyes.png` |
+| 8 | 异食癖 | 异物造成的不适 > 结算时不适的 70% | 失败抓拍 |
+| 9 | 留院观察 | 以上均不满足（兜底） | 失败抓拍 |
 
 - 「异物」包括 `foreign_object` 与 `lookalike`（共 57 种不可食物）。
 - 不适分桶按**实际生效**的增减计入（封顶丢弃的部分不计），催吐的 −5/+10 归回该异物所属类别；百分比分母是结算时的不适值（无敌模式结算时可能不足 100）。比例一律「严格大于」。
 - 每种结果在卡片上方的标题下都有一行达成说明；结算界面切换语言会同步重绘标题、说明与结果卡。
+
+### ?!67!? · 幸运数字
+
+- 结算时总分、存活秒数、最高连击任意一项**恰好等于 67** 即触发；极其稀有，优先级高于包括惊动古神在内的所有结局。
+- 多项同时为 67 时，按 总分 → 存活秒数 → 最高连击 的顺序取第一项；结算卡只把这一项放大、标红并加下划线。
+- 存活秒数为 `Math.round((结束时间 - 开局时间) / 1000)`（四舍五入取整），结算瞬间锁定；切换语言重绘结算卡时不会重算。
+- 卡片背景固定为 `67.jpg`，标题下方说明词固定为 `676767`。
 
 ### 惊动古神 · 无敌模式
 
@@ -75,18 +91,26 @@ This document records the mechanics of the current build, in Chinese and English
 
 | # | Ending | Condition | Card photo |
 |---|---|---|---|
-| 1 | Disturbed the V̷̛̪̲̓r̶̢̛̙̎̈́'q̸̨̛̳̊̈́h̷̢̛̹̿l̴̛̫̓̚-Ư̸̢̰̄̈́l̷̛̬̓͋g̸̨̛̞̈́t̷̛̪̓ḧ̶̛͓́ | 6 consecutive eyes-closed or no-face rounds (mixed allowed); triggers the invincible frenzy | `bg-V̷….jpg` |
-| 2 | Bon appétit | Score above 500 AND eating score > 50% of the total | `aha.jpg` |
-| 3 | Vegetative | No expression at all during the entire run (blinking counts as an expression) | failure snapshot |
-| 4 | The Mask | Peak combo ≥ 20 | `TheMask.jpg` |
-| 5 | I Can Still Eat… | Discomfort from surreal food > 70% of final discomfort | failure snapshot |
-| 6 | Sharp eyes | Refused inedible objects > 70% of inedible objects served, with at least 3 served | failure snapshot |
-| 7 | Pica | Discomfort from inedible objects > 70% of final discomfort | failure snapshot |
-| 8 | Under Observation | None of the above (fallback) | failure snapshot |
+| 1 | ?!67!? | Score, survival seconds, or peak combo is exactly 67 | `67.jpg` |
+| 2 | Disturbed the V̷̛̪̲̓r̶̢̛̙̎̈́'q̸̨̛̳̊̈́h̷̢̛̹̿l̴̛̫̓̚-Ư̸̢̰̄̈́l̷̛̬̓͋g̸̨̛̞̈́t̷̛̪̓ḧ̶̛͓́ | 6 consecutive eyes-closed or no-face rounds (mixed allowed); triggers the invincible frenzy | `bg-V̷….jpg` |
+| 3 | Bon appétit | Score above 500 AND eating score > 50% of the total | `aha.jpg` |
+| 4 | Vegetative | No expression at all during the entire run (blinking counts as an expression) | failure snapshot |
+| 5 | The Mask | Peak combo ≥ 20 | `TheMask.jpg` |
+| 6 | I Can Still Eat… | Discomfort from surreal food > 70% of final discomfort | failure snapshot |
+| 7 | Sharp eyes | Refused inedible objects > 70% of inedible objects served, with at least 3 served | `sharpeyes.png` |
+| 8 | Pica | Discomfort from inedible objects > 70% of final discomfort | failure snapshot |
+| 9 | Under Observation | None of the above (fallback) | failure snapshot |
 
 - "Inedible objects" covers both `foreign_object` and `lookalike` (57 items).
 - Discomfort buckets use the delta that ACTUALLY applied (clamped-away points do not count); rescue relief/penalty is charged back to the item's category. The denominator is the discomfort at settlement (which can be below 100 in the frenzy ending). All ratios are strictly greater than the threshold.
 - Every ending shows a one-line hint below its title; switching language re-renders the title, hint and card together.
+
+### ?!67!? · Lucky number
+
+- At settlement, if the score, survival seconds, or peak combo is **exactly 67**, this ending fires. It is extremely rare and outranks every other ending, including the frenzy.
+- If more than one stat is 67, the first in the order total score → survival seconds → peak combo wins, and that one row alone is enlarged, turned red and underlined on the card.
+- Survival seconds are `Math.round((end - start) / 1000)`, frozen at settlement so switching language cannot re-roll the result.
+- The card background is always `67.jpg`, and the fixed hint below the title is `676767`.
 
 ### Disturbed-the-… invincible frenzy
 

@@ -1,4 +1,4 @@
-// Pure game logic for the "expression feeding" game.
+// Pure game logic for the "Eat by Face" feeding reaction game.
 // No DOM / camera dependencies so these functions stay unit-testable with
 // `node --test`. Expression detection lives in face.js; this file only turns
 // blendshape scores and items into game outcomes.

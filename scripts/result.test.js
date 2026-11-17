@@ -6,7 +6,8 @@ import { INTENT, OUTCOME, SCORING, judge } from '../src/logic.js';
 import { GLITCH_NAME, GLITCH_PHOTO } from '../src/cthulhu.js';
 import {
   RESULT, RESULT_PHOTO, createResultStats, recordServe, recordRescue,
-  determineResult, comboScoreBonus, CTHULHU_STREAK, SHARP_EYES_MIN_FOREIGN,
+  determineResult, comboScoreBonus, sixtySevenField, LUCKY_NUMBER,
+  CTHULHU_STREAK, SHARP_EYES_MIN_FOREIGN,
 } from '../src/result.js';
 
 const run = (over = {}) => ({ score: 0, discomfort: 0, maxCombo: 0, ...over });
@@ -78,6 +79,27 @@ test('a full streak outranks every other ending', () => {
   assert.notEqual(determineResult(run({ score: 900, discomfort: 30, maxCombo: 25 }), s), RESULT.CTHULHU);
 });
 
+test('sixtySevenField reports which headline stat hit 67', () => {
+  assert.equal(LUCKY_NUMBER, 67);
+  assert.equal(sixtySevenField({ score: 67, seconds: 12, maxCombo: 3 }), 'score');
+  assert.equal(sixtySevenField({ score: 12, seconds: 67, maxCombo: 3 }), 'seconds');
+  assert.equal(sixtySevenField({ score: 12, seconds: 3, maxCombo: 67 }), 'maxCombo');
+  assert.equal(sixtySevenField({ score: 67, seconds: 67, maxCombo: 67 }), 'score');
+  assert.equal(sixtySevenField({ score: 66, seconds: 68, maxCombo: 0 }), null);
+});
+
+test('67 wins over every other ending, including the full frenzy streak', () => {
+  const loaded = stats({
+    maxDefenseStreak: CTHULHU_STREAK, reactions: 40, eatScore: 900,
+    surrealDiscomfort: 90, foreignServed: 10, foreignRefused: 10,
+  });
+  assert.equal(determineResult(run({ score: 900, discomfort: 100, maxCombo: 25 }), loaded, 67), RESULT.SIXTY_SEVEN);
+  assert.equal(determineResult(run({ score: 67, discomfort: 100 }), loaded, 12), RESULT.SIXTY_SEVEN);
+  assert.equal(determineResult(run({ score: 900, discomfort: 100, maxCombo: 67 }), loaded, 12), RESULT.SIXTY_SEVEN);
+  assert.equal(determineResult(run({ score: 900, discomfort: 100 }), loaded), RESULT.CTHULHU);
+  assert.notEqual(determineResult(run({ score: 66, discomfort: 100, maxCombo: 19 }), loaded, 66), RESULT.SIXTY_SEVEN);
+});
+
 test('glutton: score > 500 and eating share > 50%, with reject points in the denominator', () => {
   const s = stats({ eatScore: 510, reactions: 40 });
   assert.equal(determineResult(run({ score: 501, discomfort: 100 }), s), RESULT.GLUTTON);
@@ -137,12 +159,16 @@ test('each combo increase awards points equal to the new streak length', () => {
   assert.equal(comboScoreBonus(12, 0), 0); // a broken streak pays nothing
 });
 
-test('only three endings swap the card photo', () => {
+test('fixed-picture endings swap the card photo', () => {
+  assert.equal(RESULT_PHOTO[RESULT.SIXTY_SEVEN], 'assets/67.jpg');
   assert.equal(RESULT_PHOTO[RESULT.CTHULHU], GLITCH_PHOTO);
   assert.equal(RESULT_PHOTO[RESULT.GLUTTON], 'assets/aha.jpg');
   assert.equal(RESULT_PHOTO[RESULT.MASK], 'assets/TheMask.jpg');
+  assert.equal(RESULT_PHOTO[RESULT.SHARP_EYES], 'assets/sharpeyes.png');
   assert.equal(RESULT_PHOTO[RESULT.PICA], undefined);
   assert.equal(RESULT_PHOTO[RESULT.OBSERVATION], undefined);
   assert.ok(GLITCH_PHOTO.endsWith(`${GLITCH_NAME}.jpg`));
-  assert.ok(existsSync(fileURLToPath(new URL(`../src/${GLITCH_PHOTO}`, import.meta.url))));
+  for (const photo of Object.values(RESULT_PHOTO)) {
+    assert.ok(existsSync(fileURLToPath(new URL(`../src/${photo}`, import.meta.url))), `missing card photo: ${photo}`);
+  }
 });

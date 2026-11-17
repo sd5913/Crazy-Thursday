@@ -14,3 +14,9 @@ dist/
 # Local dev-server output (not source).
 *.log
 *.err
+# Browser/screenshot verification scratch files (regenerable, never source).
+.playwright-cli/
+.recovery-www/
+*preview*.png
+*result*-zh*.png
+*result*-en*.png

@@ -33,7 +33,7 @@ import { foodText } from './food-catalogue.js';
 import { GLITCH_PHOTO } from './cthulhu.js';
 import {
   createResultStats, recordServe, recordRescue, determineResult, comboScoreBonus,
-  RESULT, RESULT_PHOTO, CTHULHU_STREAK,
+  sixtySevenField, RESULT, RESULT_PHOTO, CTHULHU_STREAK,
 } from './result.js';
 import { createFaceCalibration, SAMPLE_MS } from './face-calibration.js';
 // Eyes must stay shut for this long before the spoon lands. A natural blink
@@ -92,6 +92,7 @@ export async function startGame(mode = 'camera', opts = {}) {
     rescueResolved: false,
     prevExpr: null,
     startTime: 0,
+    settleSeconds: null, // frozen at first settlement so a language re-render cannot change the result
     wrongEats: 0,
     combo: 0,
     lastCategories: null,
@@ -398,6 +399,7 @@ export async function startGame(mode = 'camera', opts = {}) {
       rescueResolved: false,
       prevExpr: null,
       startTime: performance.now(),
+      settleSeconds: null,
       wrongEats: 0,
       combo: 0,
       lastCategories: null,
@@ -439,9 +441,9 @@ export async function startGame(mode = 'camera', opts = {}) {
 
   async function gameOver() {
     state.phase = 'gameover';
-    const seconds = Math.round((performance.now() - state.startTime) / 1000);
+    const seconds = state.settleSeconds ?? (state.settleSeconds = Math.round((performance.now() - state.startTime) / 1000));
     if (!state.failShot) state.failShot = captureFrame(); // fallback grab if no prior fail
-    const resultKey = determineResult(state, state.stats);
+    const resultKey = determineResult(state, state.stats, seconds);
     const resultTitle = t(`result.${resultKey}`);
     // Three endings replace the failure snapshot with a fixed picture.
     const fixed = RESULT_PHOTO[resultKey];
@@ -530,33 +532,58 @@ export async function startGame(mode = 'camera', opts = {}) {
     // heading, VT323 for the rest of the card. The card is displayed at ~0.5x,
     // so the canvas type needs to be about twice the on-screen target.
     ctx.textAlign = 'center';
+    // One-line game name, enlarged. Both languages are scaled to the same
+    // measured glyph height so 中/EN look equally big; uppercasing keeps the
+    // English pixel-heading style. appTitle is the start screen's own name.
     ctx.fillStyle = '#f3b66c';
+    const title = t('appTitle').toUpperCase();
     ctx.font = '700 42px "Press Start 2P", "Fusion Pixel 12", monospace';
-    // maxWidth keeps the enlarged type inside the card even when the pixel
-    // webfonts are unavailable and a wider monospace fallback is used.
-    ctx.fillText(t('titleLine1'), W / 2, 112, W - 120);
-    ctx.fillText(t('titleLine2'), W / 2, 168, W - 120);
-    ctx.fillStyle = '#f5f0df';
-    ctx.font = '700 58px "VT323", "Fusion Pixel 12", monospace';
-    ctx.fillText(t('cardResultsTitle'), W / 2, 238, W - 120);
+    const titleMetrics = ctx.measureText(title);
+    const titleGlyph = (titleMetrics.actualBoundingBoxAscent ?? 42)
+      + (titleMetrics.actualBoundingBoxDescent ?? 0);
+    // Chinese has only four glyphs and stays well inside the card width, so
+    // it can take a taller target; English is already width-limited.
+    const targetGlyph = getLanguage() === 'zh' ? 88 : 60;
+    const titleSize = Math.round((42 * targetGlyph) / titleGlyph);
+    ctx.font = `700 ${titleSize}px "Press Start 2P", "Fusion Pixel 12", monospace`;
+    const titleScale = titleSize / 42;
+    const titleBaseline = 140 + ((titleMetrics.actualBoundingBoxAscent ?? 42)
+      - (titleMetrics.actualBoundingBoxDescent ?? 0)) / 2 * titleScale;
+    ctx.fillText(title, W / 2, titleBaseline, W - 120);
+    // Hierarchy: game name > the actual ending > the "Feeding Results" label.
+    ctx.fillStyle = '#d8d2c0';
+    ctx.font = '700 46px "VT323", "Fusion Pixel 12", monospace';
+    ctx.fillText(t('cardResultsTitle'), W / 2, 224, W - 120);
+    ctx.fillStyle = '#f3b66c'; // same gold as the game name
+    ctx.font = '700 72px "VT323", "Fusion Pixel 12", monospace';
     ctx.fillText(s.resultTitle, W / 2, 310, W - 120);
     // A "final discomfort" row would carry little information: most runs end
     // at 100, while the six-blink ending stops early.
+    const luckyField = sixtySevenField({ score: s.score, seconds: s.seconds, maxCombo: s.maxCombo });
     const rows = [
-      [t('cardScore'), String(s.score)],
-      [t('cardSurvived'), t('cardSeconds', { n: s.seconds })],
-      [t('cardBadBites'), String(s.wrongEats)],
-      [t('cardMaxCombo'), `x${s.maxCombo}`],
+      ['score', t('cardScore'), String(s.score)],
+      ['seconds', t('cardSurvived'), t('cardSeconds', { n: s.seconds })],
+      ['badBites', t('cardBadBites'), String(s.wrongEats)],
+      ['maxCombo', t('cardMaxCombo'), `x${s.maxCombo}`],
     ];
     ctx.textAlign = 'left';
-    ctx.font = '600 50px "VT323", "Fusion Pixel 12", monospace';
     let y = 400;
-    for (const [k, v] of rows) {
-      ctx.fillStyle = '#f5f0df';
+    for (const [field, k, v] of rows) {
+      // The rare 67 ending spotlights whichever headline stat hit the number:
+      // bigger, red, and underlined so it is obvious at a glance.
+      const lucky = field === luckyField;
+      ctx.font = lucky
+        ? '700 68px "VT323", "Fusion Pixel 12", monospace'
+        : '600 50px "VT323", "Fusion Pixel 12", monospace';
+      ctx.fillStyle = lucky ? '#ff4d6d' : '#f5f0df';
       ctx.fillText(k, 90, y, 250);
-      ctx.fillStyle = '#f3b66c';
+      ctx.fillStyle = lucky ? '#ff4d6d' : '#f3b66c';
       ctx.textAlign = 'right';
       ctx.fillText(v, W - 90, y, 250);
+      if (lucky) {
+        const width = Math.min(ctx.measureText(v).width, 250);
+        ctx.fillRect(W - 90 - width, y + 14, width, 6);
+      }
       ctx.textAlign = 'left';
       y += 110;
     }

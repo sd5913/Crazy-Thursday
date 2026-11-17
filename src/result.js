@@ -1,12 +1,13 @@
 // Pure end-of-run statistics and result selection. No DOM dependencies, so
 // every branch of the priority ladder can be exercised in node:test.
 // Game rules live in logic.js; this file only accumulates what happened and
-// maps it to one of the eight endings.
+// maps it to one of the nine endings.
 
 import { INTENT, OUTCOME } from './logic.js';
 import { GLITCH_PHOTO } from './cthulhu.js';
 
 export const RESULT = {
+  SIXTY_SEVEN: 'sixtySeven',
   CTHULHU: 'cthulhu',
   GLUTTON: 'glutton',
   VEGETATIVE: 'vegetative',
@@ -17,15 +18,26 @@ export const RESULT = {
   OBSERVATION: 'observation',
 };
 
-// Only three endings swap the failure snapshot for a fixed picture.
+// Endings with a fixed card picture instead of the failure snapshot.
 export const RESULT_PHOTO = {
+  [RESULT.SIXTY_SEVEN]: 'assets/67.jpg',
   [RESULT.CTHULHU]: GLITCH_PHOTO,
   [RESULT.GLUTTON]: 'assets/aha.jpg',
   [RESULT.MASK]: 'assets/TheMask.jpg',
+  [RESULT.SHARP_EYES]: 'assets/sharpeyes.png',
 };
 
 export const CTHULHU_STREAK = 6;
 export const SHARP_EYES_MIN_FOREIGN = 3;
+export const LUCKY_NUMBER = 67;
+
+// Which stat hit 67 determines which number the share card spotlights.
+export function sixtySevenField({ score, seconds, maxCombo }) {
+  if (score === LUCKY_NUMBER) return 'score';
+  if (seconds === LUCKY_NUMBER) return 'seconds';
+  if (maxCombo === LUCKY_NUMBER) return 'maxCombo';
+  return null;
+}
 
 // Every combo increase pays out points equal to the new streak length.
 // Resets and steady states pay nothing.
@@ -83,9 +95,12 @@ export function recordRescue(stats, appliedDiscomfort = 0) {
   stats.pendingRescueCategory = null;
 }
 
-// First match wins: harder / more specific endings outrank common ones.
-export function determineResult(state, stats) {
+// First match wins: hardest / rarest endings outrank common ones.
+export function determineResult(state, stats, seconds = 0) {
   const discomfort = state.discomfort;
+  // A 67 in any headline stat wins over every other ending, including the
+  // six-blink frenzy, no matter what else happened in the run.
+  if (sixtySevenField({ score: state.score, seconds, maxCombo: state.maxCombo })) return RESULT.SIXTY_SEVEN;
   if (stats.maxDefenseStreak >= CTHULHU_STREAK) return RESULT.CTHULHU;
   if (state.score > 500 && state.score > 0 && stats.eatScore / state.score > 0.5) return RESULT.GLUTTON;
   if (stats.reactions === 0) return RESULT.VEGETATIVE;
