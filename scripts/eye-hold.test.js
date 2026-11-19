@@ -4,7 +4,7 @@ import { createEyeHold } from '../src/eye-hold.js';
 
 test('natural blink does not qualify; continuous 500ms closes do', () => {
   const gate = createEyeHold();
-  const update = (now, closed, inferred = true) => gate.update({ now, closed, inferred });
+  const update = (now, closed, inferred = true) => gate.update({ now, closed, inferred, durationMs: 500 });
   assert.equal(update(0, true).ready, false);
   assert.equal(update(100, false).elapsedMs, 0);
   update(200, true);
@@ -15,6 +15,14 @@ test('natural blink does not qualify; continuous 500ms closes do', () => {
   assert.equal(update(650, true).ready, false);
   assert.equal(update(700, true).ready, true);
   assert.equal(update(710, false).ready, false);
+});
+
+test('default hold requires 200ms of continuous closure', () => {
+  const gate = createEyeHold();
+  const update = (now) => gate.update({ now, inferred: true, closed: true });
+  assert.equal(update(0).ready, false);
+  assert.equal(update(199).ready, false);
+  assert.equal(update(200).ready, true);
 });
 
 test('cached frames never advance timer and stale detections reset it', () => {

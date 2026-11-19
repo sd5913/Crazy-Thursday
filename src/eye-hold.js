@@ -9,7 +9,7 @@ export function createEyeHold() {
   let elapsedMs = 0;
   return {
     reset() { start = null; last = null; elapsedMs = 0; },
-    update({ inferred, closed, now, durationMs = 500 }) {
+    update({ inferred, closed, now, durationMs = 200 }) {
       if (last !== null && now - last > 200) this.reset();
       if (inferred) {
         if (!closed) this.reset();

@@ -28,11 +28,11 @@ test('EAR uses pixel aspect ratio and rejects missing landmarks',()=>{
 });
 
 
-test('raw eye ratio must be at or below 0.05 on both sides',()=>{
+test('raw eye ratio must be at or below 0.1 on both sides',()=>{
  const baseline=defaultFaceSettings();
- assert.equal(baseline.eyeOpennessLimit,.05);
- assert.equal(gameEyesClosed(cats(),{baseline},{left:.05,right:.05}),true);
- assert.equal(gameEyesClosed(cats(),{baseline},{left:.051,right:.04}),false);
+ assert.equal(baseline.eyeOpennessLimit,.1);
+ assert.equal(gameEyesClosed(cats(),{baseline},{left:.1,right:.1}),true);
+ assert.equal(gameEyesClosed(cats(),{baseline},{left:.101,right:.04}),false);
  assert.equal(gameEyesClosed(cats(),{baseline},null),false);
 });
 
@@ -40,5 +40,5 @@ test('raw eye ratio must be at or below 0.05 on both sides',()=>{
 test('Blink output is irrelevant when both eyelid ratios qualify',()=>{
  const baseline=defaultFaceSettings();
  assert.equal(gameEyesClosed(cats(0,0),{baseline},{left:.04,right:.04}),true);
- assert.equal(gameEyesClosed(cats(1,1),{baseline},{left:.1,right:.04}),false);
+ assert.equal(gameEyesClosed(cats(1,1),{baseline},{left:.11,right:.04}),false);
 });

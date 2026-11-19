@@ -229,7 +229,7 @@ export async function startGame(mode = 'camera', opts = {}) {
       const cfg = TRIALS[stepKey];
       const threshold = trialThreshold(stepKey, status.lastSample);
       const limits = relaxedLimits(status.lastSample);
-      const pool = ITEMS.filter((item) => {
+      const pool = FOOD_ITEMS.filter((item) => {
         if (cfg.pool === 'foreign') return item.eatable === false && item.category !== 'surreal_food';
         if (cfg.pool === 'surreal') return item.category === 'surreal_food';
         return item.eatable === true && item.category === 'food';
@@ -745,7 +745,7 @@ export async function startGame(mode = 'camera', opts = {}) {
     const faceLost = !state.lastFaceAt || now - state.lastFaceAt > FACE_LOST_MS;
     if (faceLost) state.closedSince = 0;
     const face = faceLost ? null : state.lastCategories;
-    const hold = eyeHold.update({ inferred: detection.inferred, closed: detection.freshVideoFrame !== false && !!fresh && eyesClosed(fresh, state.thresholds, detection.eyeGeometry), now, durationMs: state.thresholds?.baseline.eyeHoldMs ?? 500 });
+    const hold = eyeHold.update({ inferred: detection.inferred, closed: detection.freshVideoFrame !== false && !!fresh && eyesClosed(fresh, state.thresholds, detection.eyeGeometry), now, durationMs: state.thresholds?.baseline.eyeHoldMs ?? 200 });
     const rawExpr = classifyExpression(face, state.thresholds, state.eyeGeometry);
     const expr = protectedEyeExpression(rawExpr, isDemo || hold.ready);
     setBadge(faceLost ? 'none' : expr);

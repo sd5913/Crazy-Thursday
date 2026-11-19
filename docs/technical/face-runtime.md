@@ -21,7 +21,7 @@ Pipeline: camera frame → categories + eye geometry + freshness → shared anal
 
 ## Presentation and lifecycle
 
-- Game UI stays English. Debug defaults to English on entry and can switch to Chinese without restarting inference or modifying settings.
+- Game and Debug support English and Simplified Chinese. `i18n.js` owns shared UI language, and `foodText()` resolves localized catalogue copy. Language changes affect presentation, not the stored face settings.
 - Debug uses an approximately 1:5 fixed camera/sidebar and independently scrolling content area. Special States owns eye-ratio/time controls.
 - Debug back/error/cancel paths release camera tracks and stop callbacks, including late permission results.
 - Same-player replay retains camera/model/profile; New Player reruns calibration.

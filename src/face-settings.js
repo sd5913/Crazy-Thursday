@@ -11,7 +11,7 @@ const STORAGE_KEY = 'expression-feeding.face-settings.v1';
 const browserStorage = () => typeof window === 'undefined' ? null : window.localStorage;
 
 export function defaultFaceSettings() {
-  return { weights: { smile: 1, frown: 1, jaw: 1, blink: 1 }, thresholds: buildThresholds(null), eyeHoldMs: 500, eyeOpennessLimit: 0.05 };
+  return { weights: { smile: 1, frown: 1, jaw: 1, blink: 1 }, thresholds: buildThresholds(null), eyeHoldMs: 200, eyeOpennessLimit: 0.1 };
 }
 
 export function validateFaceSettings(settings) {
@@ -22,9 +22,9 @@ export function validateFaceSettings(settings) {
       throw new Error('Weight must be 0–3 and threshold must be 0–1.');
     }
   }
-  const eyeHoldMs = settings.eyeHoldMs ?? 500;
+  const eyeHoldMs = settings.eyeHoldMs ?? 200;
   if (!Number.isFinite(eyeHoldMs) || eyeHoldMs < 200 || eyeHoldMs > 1500) throw new Error('Eye hold must be 200–1500 ms.');
-  const eyeOpennessLimit = settings.eyeOpennessLimit ?? 0.05;
+  const eyeOpennessLimit = settings.eyeOpennessLimit ?? 0.1;
   if (!Number.isFinite(eyeOpennessLimit) || eyeOpennessLimit < 0 || eyeOpennessLimit > 0.5) throw new Error('Eye openness limit must be 0–0.5.');
   return {
     eyeOpennessLimit,
@@ -41,9 +41,9 @@ try {
   const stored = browserStorage()?.getItem(STORAGE_KEY);
   if (stored) {
     const settings = JSON.parse(stored);
-    if (settings.eyeOpennessLimit === 0.25) settings.eyeOpennessLimit = 0.05;
+    if (settings.eyeOpennessLimit === 0.25) settings.eyeOpennessLimit = 0.1;
     if (settings.thresholds?.blink === 0.5) settings.thresholds.blink = 0.8;
-    if (settings.eyeHoldMs === 350) settings.eyeHoldMs = 500;
+    if (settings.eyeHoldMs === 350) settings.eyeHoldMs = 200;
     applied = validateFaceSettings(settings);
   }
 } catch { /* Invalid or unavailable storage falls back to normal calibration. */ }
@@ -99,7 +99,7 @@ export function analyzeFaceSettings(categories, settings, profile = null, geomet
     : raw[key]]));
   const weighted = Object.fromEntries(FACE_ACTIONS.map(([key]) => [key, corrected[key] * settings.weights[key]]));
   weighted.eyeGeometryRequired = true;
-  weighted.eyeOpennessLimit = settings.eyeOpennessLimit ?? 0.05;
+  weighted.eyeOpennessLimit = settings.eyeOpennessLimit ?? 0.1;
   weighted.eyeOpenness = geometry;
   return { raw, corrected, weighted, profileApplied: valid, ...evaluateExpression(weighted, settings.thresholds) };
 }
