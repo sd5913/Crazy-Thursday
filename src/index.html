@@ -81,8 +81,8 @@
       <button id="debugReset" type="button">Reset developer baseline</button>
       <section class="debug-special" aria-labelledby="debugSpecialTitle">
         <h2 id="debugSpecialTitle">Special States</h2>
-        <label><span>Blink protect time (ms)</span> <input id="debugEyeHold" type="number" aria-label="Blink protect time (ms)" min="200" max="1500" step="any" value="500"></label>
-        <label><span>Eye openness limit</span> <input id="debugEyeOpenness" type="number" min="0" max="0.5" step="any" value="0.05" aria-label="Eye openness limit"></label>
+        <label><span>Blink protect time (ms)</span> <input id="debugEyeHold" type="number" aria-label="Blink protect time (ms)" min="200" max="1500" step="any" value="200"></label>
+        <label><span>Eye openness limit</span> <input id="debugEyeOpenness" type="number" min="0" max="0.5" step="any" value="0.1" aria-label="Eye openness limit"></label>
         <p id="debugEyeProgress">—</p>
       </section>
       <p id="debugSettingStatus"></p>
@@ -99,7 +99,7 @@
       <thead><tr><th>State</th><th>Illustration</th><th>Gesture</th><th>Trigger</th><th>Priority / game behavior</th></tr></thead>
       <tbody>
         <tr><th scope="row">VOMIT</th><td><img class="state-face" src="assets/calibration/jaw.svg" alt="Mouth open"></td><td>Open your mouth wide.</td><td>Jaw opening after player correction and baseline weighting reaches the vomit threshold.</td><td>Highest priority. A new mouth-opening gesture is required during rescue; holding it does not repeatedly trigger.</td></tr>
-        <tr><th scope="row">LIDDED</th><td><img class="state-face" src="assets/calibration/blink.svg" alt="Lidded"></td><td>Keep both eyes closed.</td><td>Both raw eye openness ratios must be at or below the configured limit (default 0.05).</td><td>Selected if vomit is inactive. Defense requires continuous closure for the configured time (default 500 ms).</td></tr>
+        <tr><th scope="row">LIDDED</th><td><img class="state-face" src="assets/calibration/blink.svg" alt="Lidded"></td><td>Keep both eyes closed.</td><td>Both raw eye openness ratios must be at or below the configured limit (default 0.1).</td><td>Selected if vomit is inactive. Defense requires continuous closure for the configured time (default 200 ms).</td></tr>
         <tr><th scope="row">SMILE</th><td><img class="state-face" src="assets/calibration/smile.svg" alt="Smile"></td><td>Raise both mouth corners.</td><td>Smile score reaches its threshold and is at least refusal score + 0.05.</td><td>Selected if vomit and eyes closed are inactive.</td></tr>
         <tr><th scope="row">REFUSAL</th><td><img class="state-face" src="assets/calibration/frown.svg" alt="Refusal"></td><td>Lower your brows or mouth corners.</td><td>Raw refusal = max(average brow down, average mouth-corner down). Corrected, weighted refusal reaches its threshold while smile remains below its threshold.</td><td>Selected if vomit, eyes closed and smile are inactive.</td></tr>
         <tr><th scope="row">RELAXED</th><td><img class="state-face" src="assets/calibration/neutral.svg" alt="Relaxed"></td><td>Relax your face.</td><td>A face is detected, but none of the four actions meets all conditions.</td><td>Fallback classification, not an independent model score.</td></tr>

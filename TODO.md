@@ -2,11 +2,10 @@
 
 Only this repository is in scope. Deletion and publication require confirmation.
 
-## Documentation and release
+## Before merging
 
-- [ ] Review the documentation/file list and confirm the main commit and annotated tag.
-- [ ] Resolve the untracked `.DS_Store` inclusion/exclusion decision; fetch remote changes before publishing.
-No repository-local `docs/temp/` exists; there are no temporary documents to delete in this release. The parent workspace is outside scope.
+- [ ] Review the calibration handoff fix and documentation in a PR; keep `.DS_Store` and generated `www/` out of the diff.
+- [ ] Reconcile the bundled Chinese font and its recorded size and hash against the intended asset, then rerun the offline integrity test.
 
 ## Technical debt
 
@@ -15,7 +14,7 @@ No repository-local `docs/temp/` exists; there are no temporary documents to del
 
 ## Verification
 
-Completed for the current update: 48 unit/integration tests, web build, external-network-blocked model/font startup, and browser sampling-ring progress/retry checks. These do not certify the platforms below.
+- [ ] With a real camera, finish the relaxed sample and confirm the food trial opens without switching language. Verify trial pass, retry and skip.
 
 - [ ] Test real players: ordinary blinks, partly open eyes, different eye shapes, glasses, pose and lighting. Record ratios, duration and false triggers without assuming accuracy.
 - [ ] Exercise the final camera flow: calibration, Skip, Play Again, New Player, Debug/game agreement and saved settings.

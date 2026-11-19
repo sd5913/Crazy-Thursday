@@ -3,7 +3,7 @@
 import { getLanguage, setLanguage, onLanguageChange } from './i18n.js';
 
 export const DEBUG_TRANSLATIONS = [
-  ['Both raw eye openness ratios must be at or below the configured limit (default 0.05).', '左右眼原始开合比例都须不超过配置上限（默认0.05）。'],
+  ['Both raw eye openness ratios must be at or below the configured limit (default 0.1).', '左右眼原始开合比例都须不超过配置上限（默认0.1）。'],
   ['Eye landmarks unavailable. Face the camera and retry.', '眼睑关键点不可用，请正对摄像头重试。'],
   ['Open and closed eyes are not distinct enough. Retry with both eyes fully closed.', '睁眼与闭眼的区分不足，请完全闭合双眼后重试。'],
   ['Eye openness limit', '眼睑开合比例上限'], ['Left eye openness ratio', '左眼开合比例'], ['Right eye openness ratio', '右眼开合比例'], ['leftEAR', '左眼开合比例'], ['rightEAR', '右眼开合比例'], ['Eyes', '眼部'], ['Mouth', '嘴部'], ['Brows', '眉毛'],
@@ -31,7 +31,7 @@ export const DEBUG_TRANSLATIONS = [
   ["Selected if vomit and eyes closed are inactive.", "呕吐、闭眼均未触发时选中。"],
   ["Smile score reaches its threshold and is at least refusal score + 0.05.", "微笑判定值 ≥ 微笑阈值，且 ≥ 拒绝判定值 + 0.05。"],
   ["Raise both mouth corners.", "嘴角向上扬。"],
-  ["Selected if vomit is inactive. Defense requires continuous closure for the configured time (default 500 ms).", "呕吐未触发时选中；正式游戏防御还需连续闭眼达到配置时长（默认 500ms）。"],
+  ["Selected if vomit is inactive. Defense requires continuous closure for the configured time (default 200 ms).", "呕吐未触发时选中；正式游戏防御还需连续闭眼达到配置时长（默认 200ms）。"],
   ["Average eye closure after correction and weighting reaches the threshold.", "左右闭眼信号平均值经校正、加权后 ≥ 闭眼阈值。"],
   ["Keep both eyes closed.", "闭合双眼。"],
   ["Highest priority. A new mouth-opening gesture is required during rescue; holding it does not repeatedly trigger.", "最高优先级；游戏救援阶段需重新做出一次张嘴动作，持续保持不会反复触发。"],

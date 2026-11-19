@@ -223,7 +223,7 @@ export function openFaceDebug() {
   let validSettings = true;
   const save = get('debugApply');
   const opennessInput = get('debugEyeOpenness');
-  opennessInput.value = String(settings.eyeOpennessLimit ?? .05);
+  opennessInput.value = String(settings.eyeOpennessLimit ?? .1);
   const holdInput = get('debugEyeHold');
   holdInput.value = String(settings.eyeHoldMs);
   holdInput.hidden = false;

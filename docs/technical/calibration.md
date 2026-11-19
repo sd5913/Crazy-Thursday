@@ -18,6 +18,13 @@
 - Amplitude gain is bounded to 0.75–1.25 (±25%). Offset subtraction and developer weighting are separate, so final output is not bounded to ±25% change.
 - Five steps must complete before replacing the profile. Cancel retains previous compatible settings; game Skip explicitly uses baseline only.
 
+## Camera-game food trials
+
+- `game.js` starts a trial after successful capture, using `lastSample.key` because the sampler already points to the next step. Debug uses the shared sampler without this trial layer.
+- `calibration-trial.js` defines the per-step pool and pass criteria. `game.js` filters the runtime food catalogue and owns trial timing, rendering and navigation.
+- The relaxed trial compares fresh frames against per-channel limits derived from the player's neutral sample. Action trials compare the relevant score with the captured threshold. The blink trial's score check is not the gameplay eye-defense gate.
+- Passing or skipping a trial advances the game UI; retry repeats that trial. Skipping all calibration uses the baseline instead. A language change can rebuild a trial but is not required to advance.
+
 ## Final eye behavior
 
 Eyes are checked using raw per-eye ratios and duration, not Blink/Squint blendshapes. Calibration still samples and validates open/closed geometry, but the stored personal eye references do not currently alter the raw-ratio threshold. This remaining data should not be presented as active personal eye normalization.

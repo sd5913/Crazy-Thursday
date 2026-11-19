@@ -128,7 +128,7 @@ export function buildThresholds(cal) {
 // while shutting your eyes cannot mask it.
 export function eyesClosed(categories, thresholds, geometry = null) {
   if (!categories || !thresholds) return false;
-  return closedEyeChecks({ ...expressionScores(categories), eyeOpenness: geometry, eyeOpennessLimit: thresholds.eyeOpennessLimit ?? .05 }, thresholds).every((c) => c.passed);
+  return closedEyeChecks({ ...expressionScores(categories), eyeOpenness: geometry, eyeOpennessLimit: thresholds.eyeOpennessLimit ?? .1 }, thresholds).every((c) => c.passed);
 }
 
 // Classify the face for the HUD. Priority is by signal exclusivity, not by a
@@ -151,8 +151,8 @@ export function expressionScores(categories) {
 export function closedEyeChecks(scores, thresholds) {
   return ['left', 'right'].map((side) => {
     const value = scores.eyeOpenness?.[side];
-    return { label: `${side} eye openness`, left: value ?? Infinity, operator: '<=', right: scores.eyeOpennessLimit ?? .05,
-      passed: Number.isFinite(value) && value <= (scores.eyeOpennessLimit ?? .05) };
+    return { label: `${side} eye openness`, left: value ?? Infinity, operator: '<=', right: scores.eyeOpennessLimit ?? .1,
+      passed: Number.isFinite(value) && value <= (scores.eyeOpennessLimit ?? .1) };
   });
 }
 
@@ -179,7 +179,7 @@ export function evaluateExpression(scores, thresholds) {
 
 export function classifyExpression(categories, thresholds, geometry = null) {
   if (!categories || !thresholds) return EXPRESSIONS.NEUTRAL;
-  return evaluateExpression({ ...expressionScores(categories), eyeOpenness: geometry, eyeOpennessLimit: thresholds.eyeOpennessLimit ?? .05 }, thresholds).expression;
+  return evaluateExpression({ ...expressionScores(categories), eyeOpenness: geometry, eyeOpennessLimit: thresholds.eyeOpennessLimit ?? .1 }, thresholds).expression;
 }
 
 // At the spoon's arrival we only care about accept / reject / defend / neutral.

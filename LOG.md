@@ -65,3 +65,11 @@ Status: local working-tree changes developed with AI assistance at the repositor
 - Added a sampling progress outline around the existing calibration illustration: clockwise from 12 o’clock, synchronized with actual sampling time, reset on retry/next step. No calibration algorithm change.
 - Browser checks verified intermediate ring progress and retry reset. The offline-runtime check also verified the actual localhost:8000 server after restarting an older process that returned the wrong MIME type for `.mjs`.
 - Current release preparation remains uncommitted. No repository-local temporary documents were found; no files were deleted during this documentation pass.
+
+## 2026-11-13 — Offline bundle published
+
+- `41fa3c1` (FATQ), tagged `v1.3.1`, published the offline resource bundle, sampling progress and Debug cleanup described above. The tag push was confirmed; packaged release outputs were not verified.
+
+## 2026-11-19 — Local calibration fix and eye presets
+
+- Local changes (not yet published): set the eye hold default to 200 ms and each eye’s openness limit to 0.1; corrected the food catalogue reference used by the trial handoff. The web build passed; the font manifest mismatch was confirmed in the upstream baseline. Real-camera verification remains open.

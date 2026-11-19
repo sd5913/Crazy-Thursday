@@ -5,7 +5,7 @@
 `VOMIT → EYES CLOSED → SMILE → REFUSAL → NEUTRAL`; no valid face is displayed as `NO FACE`.
 
 - **VOMIT:** jaw opening reaches its configured threshold. This is a game gesture, not medical detection of vomiting; no tongue signal is used. Rescue requires a new gesture edge.
-- **EYES CLOSED:** each raw eyelid openness ratio is finite and at/below the configured limit, continuously for the configured protection time. Current defaults: 0.05 and 500ms. Neither Blink nor Squint is a decision input.
+- **EYES CLOSED:** each raw eyelid openness ratio is finite and at/below the configured limit, continuously for the configured protection time. Current defaults: 0.1 and 200ms. Neither Blink nor Squint is a decision input.
 - **SMILE:** weighted smile reaches its threshold and is at least refusal + 0.05.
 - **REFUSAL:** `max(mean(browDownLeft, browDownRight), mean(mouthFrownLeft, mouthFrownRight))`, followed by player correction and baseline weight. It must reach its threshold while smile stays below its threshold. Default refusal threshold: 0.05. Lip pressing is ignored.
 - **NEUTRAL:** face detected but no higher action satisfies its full conditions; not an independent model confidence.
