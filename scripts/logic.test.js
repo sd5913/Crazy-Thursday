@@ -11,6 +11,7 @@ import {
   speedForLevel,
   applyRescue,
   randomItem,
+  feedbackTone,
   ITEMS,
   OUTCOME,
   INTENT,
@@ -86,6 +87,17 @@ test('judge: rewards correct plays, penalises wrong eats, no penalty for decline
   assert.equal(judge(cactus, INTENT.NEUTRAL).type, OUTCOME.WRONG_EAT);
   // A good food with no expression is NOT eaten -- just declined, no points:
   assert.equal(judge(cake, INTENT.NEUTRAL).type, OUTCOME.DECLINED_FOOD);
+});
+
+test('ambient feedback tone: green for good/refusal, yellow for surreal, none for wrong/neutral', () => {
+  assert.equal(feedbackTone(OUTCOME.CORRECT_ACCEPT), 'green'); // ate normal food
+  assert.equal(feedbackTone(OUTCOME.SURREAL_REJECT), 'green'); // did not eat surreal
+  assert.equal(feedbackTone(OUTCOME.CORRECT_REJECT), 'green'); // refused a foreign object
+  assert.equal(feedbackTone(OUTCOME.SURREAL_ACCEPT), 'yellow'); // ate surreal food
+  // WRONG_EAT is a two-stage feedback driven by the caller, never a static tone.
+  assert.equal(feedbackTone(OUTCOME.WRONG_EAT), null);
+  assert.equal(feedbackTone(OUTCOME.DECLINED_FOOD), null);
+  assert.equal(feedbackTone(OUTCOME.DEFENDED), null);
 });
 
 test('judge scoring matches the design', () => {

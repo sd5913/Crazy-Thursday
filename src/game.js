@@ -8,10 +8,12 @@ import {
   INTENT,
   OUTCOME,
   judge,
+  expressionScores,
   comboContinues,
   speedForLevel,
   applyRescue,
   randomItem,
+  feedbackTone,
   SCORING,
 } from './logic.js';
 
@@ -36,6 +38,8 @@ import {
   sixtySevenField, RESULT, RESULT_PHOTO, CTHULHU_STREAK,
 } from './result.js';
 import { createFaceCalibration, SAMPLE_MS } from './face-calibration.js';
+import { TRIALS, TRIAL_FOOD_COUNT, TRIAL_PASS_COUNT, TRIAL_WINDOW_MS, trialHit, trialPassed, pickTrialFoods } from './calibration-trial.js';
+import { FOOD_ITEMS } from './food-catalogue.js';
 // Eyes must stay shut for this long before the spoon lands. A natural blink
 // (~100ms) is too short, so it can no longer fake a defense.
 
@@ -72,6 +76,7 @@ export async function startGame(mode = 'camera', opts = {}) {
     score: document.getElementById('score'),
     discomfortFill: document.getElementById('discomfortFill'),
     spoon: document.getElementById('spoon'),
+    ambient: document.getElementById('ambient'),
     item: document.getElementById('item'),
     badge: document.getElementById('exprBadge'),
     subtitle: document.getElementById('subtitle'),
@@ -127,6 +132,13 @@ export async function startGame(mode = 'camera', opts = {}) {
   };
   const setSubtitle = (text) => {
     el.subtitle.textContent = text;
+  };
+  // Ambient edge glow: a tone clears automatically when null. The rescue tone
+  // is dropped when the next round starts or the run ends, never left hanging.
+  const setAmbient = (tone) => {
+    if (!el.ambient) return;
+    if (tone) el.ambient.dataset.tone = tone;
+    else delete el.ambient.dataset.tone;
   };
   const setCombo = () => {
     if (state.combo > state.maxCombo) state.maxCombo = state.combo;
@@ -188,6 +200,95 @@ export async function startGame(mode = 'camera', opts = {}) {
     const baseline = getBaseline();
     const calibration = createFaceCalibration(baseline);
     let finish = () => {};
+    let trialRerender = null;
+
+    // Build the pass threshold from the just-captured sample. Neutral means
+    // "no expression", so it passes when no channel exceeds the relaxed level.
+    function trialThreshold(stepKey, sample) {
+      if (stepKey === 'neutral') return 0;
+      const stats = sample?.stats?.[stepKey];
+      if (!stats) return null;
+      if (stepKey === 'blink') return stats.median; // blink uses its score channel
+      return Math.max(0.05, stats.median * 0.85);
+    }
+
+    // Test one captured expression on a few dishes before advancing. Each
+    // dish gets a short window; a hit requires the target channel to fire.
+    function renderTrial(status, onPass) {
+      const stepKey = status.step.key;
+      const cfg = TRIALS[stepKey];
+      const threshold = trialThreshold(stepKey, status.lastSample);
+      const pool = ITEMS.filter((item) => {
+        if (cfg.pool === 'foreign') return item.eatable === false && item.category !== 'surreal_food';
+        if (cfg.pool === 'surreal') return item.category === 'surreal_food';
+        return item.eatable === true && item.category === 'food';
+      });
+      const foods = pickTrialFoods(pool, TRIAL_FOOD_COUNT);
+      const results = [];
+      let idx = 0;
+      let cancelled = false;
+      const label = faceLabel(stepFaceKey(stepKey));
+      const need = TRIAL_PASS_COUNT;
+      const total = foods.length || TRIAL_FOOD_COUNT;
+
+      function step(isFirst) {
+        if (cancelled) return;
+        if (idx >= foods.length) {
+          const pass = foods.length ? trialPassed(results) : true; // no pool -> don't block
+          showOverlay(
+            `<h1>${t(pass ? 'trialPass' : 'trialFail')}</h1>` +
+            `<div class="card-actions calibration-actions">` +
+            `<button id="trialNextBtn" type="button">${t(pass ? 'trialContinue' : 'trialRetry')}</button>` +
+            `</div>`
+          );
+          document.getElementById('trialNextBtn').addEventListener('click', () => {
+            if (pass) { trialRerender = null; cancelled = true; onPass(); }
+            else renderTrial(status, onPass);
+          }, { once: true });
+          return;
+        }
+        const food = foods[idx];
+        showOverlay(
+          `<h1>${t('trialTitle', { label })}</h1>` +
+          `<p>${t('trialIntro', { need, total })}</p>` +
+          `<div class="trial-clock"><div class="trial-progress" id="trialBar"></div></div>` +
+          `<img class="trial-food" src="${food.image}" alt="${foodText(food, getLanguage())}">` +
+          `<p id="trialState">${stepKey === 'neutral' ? t('trialRelaxed') : t('trialCounting')}</p>` +
+          `<p>${t('trialProgress', { n: idx + 1, total })}</p>`
+        );
+        const bar = document.getElementById('trialBar');
+        const stateText = document.getElementById('trialState');
+        const started = performance.now();
+        let hit = false;
+        function pump(now) {
+          if (cancelled) return;
+          const frame = detectFaceFrame(el.video);
+          const scores = frame.inferred && frame.freshVideoFrame !== false
+            ? expressionScores(frame.categories) : null;
+          if (scores && threshold !== null) {
+            if (stepKey === 'neutral') {
+              const relaxed = Math.max(scores.smile || 0, scores.frown || 0, scores.jaw || 0);
+              hit = hit || relaxed <= Math.max(0.12, threshold + 0.08);
+            } else {
+              hit = hit || trialHit(scores, cfg.channel, threshold);
+            }
+          }
+          const progress = Math.min(1, (now - started) / TRIAL_WINDOW_MS);
+          bar.style.width = `${progress * 100}%`;
+          if (progress < 1) requestAnimationFrame(pump);
+          else {
+            results[idx] = hit;
+            stateText.textContent = hit ? t('trialHit') : t('trialMiss');
+            idx += 1;
+            setTimeout(() => step(false), 600);
+          }
+        }
+        requestAnimationFrame(pump);
+      }
+      trialRerender = () => { cancelled = true; renderTrial(status, onPass); };
+      step(true);
+    }
+
     function render(status) {
       if (status.completed) {
         state.thresholds = { baseline, profile: status.profile };
@@ -229,13 +330,21 @@ export async function startGame(mode = 'camera', opts = {}) {
           clock.setAttribute('aria-valuenow', String(Math.round(progress * 100)));
           setSubtitle(t('calProgress', { s: (next.remainingMs / 1000).toFixed(1) }));
           if (next.sampling) requestAnimationFrame(tick);
-          else requestAnimationFrame(() => render(next));
+          else requestAnimationFrame(() => {
+            const captured = !next.error && next.lastSample && next.lastSample.key === status.step.key;
+            if (captured && TRIALS[status.step.key]) {
+              renderTrial(next, () => render(calibration.snapshot()));
+            } else {
+              render(next);
+            }
+          });
         }
         requestAnimationFrame(tick);
       }, { once: true });
     }
     // A re-render mid-sample would detach the progress ring, so only idle steps rebuild.
     rerenderOverlay = () => {
+      if (trialRerender) { trialRerender(); return; }
       const status = calibration.snapshot();
       if (!status.sampling) render(status);
     };
@@ -243,6 +352,7 @@ export async function startGame(mode = 'camera', opts = {}) {
       await new Promise((done) => { finish = done; render(calibration.snapshot()); });
     } finally {
       rerenderOverlay = null;
+      trialRerender = null;
     }
   }
 
@@ -250,6 +360,7 @@ export async function startGame(mode = 'camera', opts = {}) {
   function startRound() {
     state.round += 1;
     eyeHold.reset();
+    setAmbient(null); // each serve clears the previous round's feedback glow
     state.closedSince = 0; // each serve starts a fresh eyes-shut hold
     state.item = randomItem();
     el.item.src = state.item.image;
@@ -279,6 +390,7 @@ export async function startGame(mode = 'camera', opts = {}) {
     setDiscomfort();
     el.bg.src = GLITCH_PHOTO;
     document.body.classList.add('cthulhu-mode');
+    setAmbient(null); // the frenzy replaces all normal feeding feedback
     setSubtitle(t('cthulhuChant'));
   }
 
@@ -338,6 +450,7 @@ export async function startGame(mode = 'camera', opts = {}) {
     if (outcome.type === OUTCOME.WRONG_EAT) {
       state.wrongEats += 1;
       state.failShot = captureFrame(); // grab the face at the moment of failure
+      setAmbient('rescue'); // flashing yellow for the whole vomit window
       state.phase = 'rescue';
       state.rescueResolved = false;
       state.phaseStart = performance.now();
@@ -349,6 +462,7 @@ export async function startGame(mode = 'camera', opts = {}) {
   }
 
   function flashResult(outcome) {
+    setAmbient(feedbackTone(outcome.type)); // good/neutral green, surreal yellow
     let msg;
     if (outcome.type === OUTCOME.DEFENDED) {
       // Nurse nags you for shutting your eyes instead of eating -- rotate lines.
@@ -374,6 +488,8 @@ export async function startGame(mode = 'camera', opts = {}) {
     state.discomfort = applyRescue(before, success);
     recordRescue(state.stats, state.discomfort - before);
     setDiscomfort();
+    // Object rejected -> green; object finally swallowed -> red.
+    setAmbient(success ? 'green' : 'red');
     setSubtitle(success ? t('rescueUp', { n: before - state.discomfort }) : t('rescueHeld'));
     state.phase = 'result';
     state.phaseStart = performance.now();
@@ -414,6 +530,7 @@ export async function startGame(mode = 'camera', opts = {}) {
     });
     el.bg.src = 'assets/bg.jpg';
     document.body.classList.remove('cthulhu-mode');
+    setAmbient(null);
     setScore();
     setDiscomfort();
     setCombo();
@@ -441,6 +558,7 @@ export async function startGame(mode = 'camera', opts = {}) {
 
   async function gameOver() {
     state.phase = 'gameover';
+    setAmbient(null); // no feeding glow on the result screen
     const seconds = state.settleSeconds ?? (state.settleSeconds = Math.round((performance.now() - state.startTime) / 1000));
     if (!state.failShot) state.failShot = captureFrame(); // fallback grab if no prior fail
     const resultKey = determineResult(state, state.stats, seconds);

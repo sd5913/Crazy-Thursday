@@ -19,6 +19,7 @@ The meaning of each expression is no longer listed on the start screen; it is ex
 
 - 摄像头模式：微笑=接受；皱眉或压低眉毛=拒绝；闭眼并保持≈0.5 秒=防御；张大嘴=催吐。
 - 键盘演示（无摄像头）：`S` 微笑，`F` 拒绝，`V` 催吐，`B` 闭眼；松开按键恢复放松。演示模式不需要校准。
+- 校准流程：五个表情逐个采样，每采样完一个就进入小测试——连续端出 3 道菜（微笑/放松/催吐/闭眼用正常食物，拒绝用异物），每道约 1.6 秒内做出该表情即算命中；3 道里对 2 道即通过并进入下一个表情，否则重试本测试。测试失败不会卡住流程，可随时跳过整个校准。
 - 每轮勺子到达时按当时的表情判定：
   - 微笑：正常食物 +10 分；超现实食物 +30 分、不适 +5；不可食物（异物）被吃下，不适 +10。
   - 拒绝：异物 +10 分；正常/超现实食物不加分、不加不适。
@@ -26,6 +27,13 @@ The meaning of each expression is no longer listed on the start screen; it is ex
   - 无表情：正常食物被拒（无代价）；异物被强行喂下 +10 不适；超现实食物被拒（无代价）。
   - 无人脸检测按无表情处理。
 - 错吃后有 2.5 秒催吐窗口：张嘴催吐成功，不适 −5（净 +5）；超时未吐，不适再 +10（净 +20）。不适始终限制在 0–100。
+
+### 进食反馈（屏幕四周环境光）
+
+- 吃到正常食物、拒绝超现实食物、拒绝异物：屏幕四周亮绿光。
+- 吃到超现实食物：亮黄光。
+- 吃到异物：2.5 秒催吐窗口内持续闪烁黄光；催吐成功（吐出异物）转绿光；窗口结束异物最终吃下则亮红光。
+- 闭眼防御、正常食物被拒（无表情）不发光；无敌模式不显示任何进食反馈。每轮开始时自动清除上一轮的光。
 
 ### 连击
 
@@ -73,6 +81,7 @@ The meaning of each expression is no longer listed on the start screen; it is ex
 
 - Camera mode: smile = accept; frown or lowered brows = reject; close both eyes and hold for ≈0.5 s = defend; open your mouth wide = rescue.
 - Keyboard demo (no camera): `S` smile, `F` refusal, `V` vomit, `B` blink; release the key to relax. The demo needs no calibration.
+- Calibration flow: each of the five expressions is sampled, then immediately tested on 3 dishes (normal food for smile/relaxed/vomit/blink, inedible objects for refusal). Make the same face within ~1.6 s per dish to score a hit; 2 of 3 passes and moves to the next expression, otherwise the test retries. A failed test never blocks progress, and the whole calibration can still be skipped at any time.
 - When the spoon arrives:
   - Smile: normal food +10 points; surreal food +30 points and +5 discomfort; inedible object eaten → +10 discomfort.
   - Refusal: inedible object +10 points; normal/surreal food costs and earns nothing.
@@ -80,6 +89,13 @@ The meaning of each expression is no longer listed on the start screen; it is ex
   - No expression: normal food is simply declined; inedible objects are force-fed (+10 discomfort); surreal food is declined.
   - A lost face is treated as no expression.
 - A wrong bite opens a 2.5 s rescue window: vomiting in time removes 5 discomfort (net +5); failing adds another 10 (net +20). Discomfort is clamped to 0–100.
+
+### Eating feedback (ambient edge glow)
+
+- Ate normal food, declined surreal food, or refused a foreign object: green glow around the screen edges.
+- Ate surreal food: yellow glow.
+- Ate a foreign object: yellow glow flashes continuously during the 2.5 s vomit window; a successful purge turns it green; if the window ends with the object swallowed, it turns red.
+- Eye defense and declined normal food (no expression) show no glow; the invincible frenzy suppresses all feeding feedback. The glow clears at the start of every round.
 
 ### Combo
 

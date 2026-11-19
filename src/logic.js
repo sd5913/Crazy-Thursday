@@ -34,6 +34,17 @@ export const OUTCOME = {
   DEFENDED: 'defended',
 };
 
+// Ambient edge-glow colour for an immediate feeding result. WRONG_EAT is
+// handled separately by the caller (flashing yellow during rescue, red after
+// the object is actually swallowed); declined/defended rounds show no glow.
+export function feedbackTone(outcomeType) {
+  if (outcomeType === OUTCOME.CORRECT_ACCEPT
+    || outcomeType === OUTCOME.CORRECT_REJECT
+    || outcomeType === OUTCOME.SURREAL_REJECT) return 'green';
+  if (outcomeType === OUTCOME.SURREAL_ACCEPT) return 'yellow';
+  return null;
+}
+
 export const SCORING = {
   CORRECT_POINTS: 10,
   // Surreal food is edible but risky: a large reward with a small discomfort
