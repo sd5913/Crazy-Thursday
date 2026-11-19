@@ -36,6 +36,10 @@ test('invalid samples and weak poses retry; warmup and outlier do not define pro
   assert.match(result.error, /Not enough/);
   result = feed(cal, {}, 2000);
   assert.equal(result.index, 1);
+  // After a successful sample the index already points to the NEXT step, so
+  // post-sample UI must use lastSample.key as the just-captured expression.
+  assert.equal(result.step.key, 'smile');
+  assert.equal(result.lastSample.key, 'neutral');
   result = feed(cal, {}, 4000);
   assert.match(result.error, /not distinct/);
   cal.startSample(6000);

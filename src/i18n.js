@@ -85,6 +85,7 @@ const STRINGS = {
     trialRetry: 'Test again',
     trialContinue: 'Next expression',
     trialStart: 'Start test',
+    trialSkip: 'Skip test',
     trialCounting: 'Hold it…',
     // Calibration errors surface as English strings from face-calibration.js.
     'Not enough fresh face samples. Face the camera and retry.': 'Not enough fresh face samples. Face the camera and retry.',
@@ -206,6 +207,7 @@ const STRINGS = {
     trialRetry: '重新测试',
     trialContinue: '下一个表情',
     trialStart: '开始测试',
+    trialSkip: '跳过测试',
     trialCounting: '保持动作……',
     'Not enough fresh face samples. Face the camera and retry.': '有效样本不足，请面对镜头重试。',
     'Eye landmarks unavailable. Face the camera and retry.': '眼睑关键点不可用，请正对摄像头重试。',

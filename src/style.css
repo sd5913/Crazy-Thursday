@@ -512,6 +512,16 @@ body { margin: 0; }
   justify-content: center;
   flex-wrap: wrap;
 }
+/* Quiet escape hatch on the expression test so nobody is stuck. */
+.card-actions .link-button {
+  background: none;
+  border: none;
+  box-shadow: none;
+  text-decoration: underline;
+  opacity: .75;
+  padding: .3rem .5rem;
+  font-size: .8rem;
+}
 /* Game Over: the two short actions share the first row, the longer save action
    gets its own row. Result-panel type is a step larger than the start /
    calibration panels on both desktop and phones. */

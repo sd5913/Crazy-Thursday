@@ -205,19 +205,30 @@ export async function startGame(mode = 'camera', opts = {}) {
     // Build the pass threshold from the just-captured sample. Neutral means
     // "no expression", so it passes when no channel exceeds the relaxed level.
     function trialThreshold(stepKey, sample) {
-      if (stepKey === 'neutral') return 0;
+      if (stepKey === 'neutral') return null; // handled with per-channel limits below
       const stats = sample?.stats?.[stepKey];
       if (!stats) return null;
       if (stepKey === 'blink') return stats.median; // blink uses its score channel
       return Math.max(0.05, stats.median * 0.85);
     }
+    // Relaxed limits come from the player's OWN neutral sample, not a fixed
+    // number, so camera noise cannot make the relax test impossible to pass.
+    function relaxedLimits(sample) {
+      return ['smile', 'frown', 'jaw'].map((channel) => {
+        const s = sample?.stats?.[channel];
+        return s ? s.median + Math.max(0.06, 2 * s.iqr) : 0.25;
+      });
+    }
 
     // Test one captured expression on a few dishes before advancing. Each
     // dish gets a short window; a hit requires the target channel to fire.
     function renderTrial(status, onPass) {
-      const stepKey = status.step.key;
+      // feed() advances the index, so the captured step is lastSample.key,
+      // NOT status.step.key (which already points to the NEXT expression).
+      const stepKey = status.lastSample?.key;
       const cfg = TRIALS[stepKey];
       const threshold = trialThreshold(stepKey, status.lastSample);
+      const limits = relaxedLimits(status.lastSample);
       const pool = ITEMS.filter((item) => {
         if (cfg.pool === 'foreign') return item.eatable === false && item.category !== 'surreal_food';
         if (cfg.pool === 'surreal') return item.category === 'surreal_food';
@@ -254,8 +265,16 @@ export async function startGame(mode = 'camera', opts = {}) {
           `<div class="trial-clock"><div class="trial-progress" id="trialBar"></div></div>` +
           `<img class="trial-food" src="${food.image}" alt="${foodText(food, getLanguage())}">` +
           `<p id="trialState">${stepKey === 'neutral' ? t('trialRelaxed') : t('trialCounting')}</p>` +
-          `<p>${t('trialProgress', { n: idx + 1, total })}</p>`
+          `<p>${t('trialProgress', { n: idx + 1, total })}</p>` +
+          `<div class="card-actions calibration-actions">` +
+          `<button id="trialSkipBtn" type="button" class="link-button">${t('trialSkip')}</button>` +
+          `</div>`
         );
+        document.getElementById('trialSkipBtn').addEventListener('click', () => {
+          cancelled = true;
+          trialRerender = null;
+          onPass();
+        }, { once: true });
         const bar = document.getElementById('trialBar');
         const stateText = document.getElementById('trialState');
         const started = performance.now();
@@ -265,11 +284,12 @@ export async function startGame(mode = 'camera', opts = {}) {
           const frame = detectFaceFrame(el.video);
           const scores = frame.inferred && frame.freshVideoFrame !== false
             ? expressionScores(frame.categories) : null;
-          if (scores && threshold !== null) {
+          if (scores) {
             if (stepKey === 'neutral') {
-              const relaxed = Math.max(scores.smile || 0, scores.frown || 0, scores.jaw || 0);
-              hit = hit || relaxed <= Math.max(0.12, threshold + 0.08);
-            } else {
+              // Pass while every relevant channel stays near the player's
+              // own relaxed baseline captured during the neutral sample.
+              hit = hit || ['smile', 'frown', 'jaw'].every((channel, i) => (scores[channel] || 0) <= limits[i]);
+            } else if (threshold !== null) {
               hit = hit || trialHit(scores, cfg.channel, threshold);
             }
           }
