@@ -5,12 +5,14 @@ import {
   trialHit, trialPassed, pickTrialFoods,
 } from '../src/calibration-trial.js';
 
-test('every calibration step has a trial with a known channel and food pool', () => {
-  assert.deepEqual(Object.keys(TRIALS).sort(), ['blink', 'frown', 'jaw', 'neutral', 'smile']);
-  assert.equal(TRIALS.smile.channel, 'smile');
-  assert.equal(TRIALS.frown.pool, 'foreign'); // practice refusal on inedible food
+test('only the three middle expressions get a food test', () => {
+  assert.deepEqual(Object.keys(TRIALS).sort(), ['frown', 'jaw', 'smile']);
+  assert.equal(TRIALS.neutral, undefined); // relaxed is calibration-only
+  assert.equal(TRIALS.blink, undefined); // closed eyes are calibration-only
+  assert.equal(TRIALS.smile.pool, 'normal'); // eat the good food
+  assert.equal(TRIALS.frown.pool, 'foreign'); // refuse the inedible object
+  assert.equal(TRIALS.jaw.pool, 'foreign'); // purge a swallowed object
   assert.equal(TRIALS.jaw.channel, 'jaw');
-  assert.equal(TRIALS.blink.channel, 'blink');
 });
 
 test('trialHit compares a frame channel score against the captured threshold', () => {

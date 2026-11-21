@@ -71,7 +71,7 @@
 }
 
 :root {
-  font-family: 'VT323', 'Courier New', monospace;
+  font-family: var(--pixel-body);
   color: #f5f0df;
   --bg: #162a29;
   --accent: #f3b66c;

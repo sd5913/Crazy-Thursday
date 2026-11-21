@@ -76,7 +76,6 @@ const STRINGS = {
     // Post-calibration test: prove each expression on a few food items.
     trialTitle: 'Quick test: {label}',
     trialIntro: 'Now show the same face when each dish appears. Get {need} of {total} right to continue.',
-    trialRelaxed: 'Keep a relaxed face — do not react.',
     trialProgress: 'Dish {n} / {total}',
     trialHit: 'Got it!',
     trialMiss: 'Missed — try again on the next one.',
@@ -198,7 +197,6 @@ const STRINGS = {
     calAltBlink: '闭合双眼',
     trialTitle: '小测试：{label}',
     trialIntro: '每出现一道菜就做出刚才的表情。{total} 道里做对 {need} 道就能继续。',
-    trialRelaxed: '保持放松——脸上别做表情。',
     trialProgress: '第 {n} / {total} 道',
     trialHit: '识别到了！',
     trialMiss: '没识别到——下一道再试。',

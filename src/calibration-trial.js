@@ -7,14 +7,13 @@ export const TRIAL_FOOD_COUNT = 3; // foods shown per expression test
 export const TRIAL_PASS_COUNT = 2; // correct expressions needed to pass
 export const TRIAL_WINDOW_MS = 1600; // time to react to each food
 
-// Which food pool each calibration step is tested against. `channel` is the
-// raw face-settings channel that must fire for a hit.
+// Only the three middle expressions get a food test: relaxed and closed eyes
+// are calibration-only steps. `channel` is the raw face-settings channel that
+// must fire for a hit; `pool` picks dishes that fit the expression's meaning.
 export const TRIALS = {
-  neutral: { channel: 'neutral', pool: 'normal' },
-  smile: { channel: 'smile', pool: 'normal' },
-  frown: { channel: 'frown', pool: 'foreign' },
-  jaw: { channel: 'jaw', pool: 'normal' },
-  blink: { channel: 'blink', pool: 'normal' },
+  smile: { channel: 'smile', pool: 'normal' }, // eat the good food
+  frown: { channel: 'frown', pool: 'foreign' }, // refuse the inedible object
+  jaw: { channel: 'jaw', pool: 'foreign' }, // object was swallowed - purge it
 };
 
 // A frame's channel values are the median-smoothed scores keyed by channel

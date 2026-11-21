@@ -19,7 +19,7 @@ The meaning of each expression is no longer listed on the start screen; it is ex
 
 - 摄像头模式：微笑=接受；皱眉或压低眉毛=拒绝；闭眼并保持≈0.5 秒=防御；张大嘴=催吐。
 - 键盘演示（无摄像头）：`S` 微笑，`F` 拒绝，`V` 催吐，`B` 闭眼；松开按键恢复放松。演示模式不需要校准。
-- 校准流程：五个表情逐个采样，每采样完一个就进入小测试——连续端出 3 道菜（微笑/放松/催吐/闭眼用正常食物，拒绝用异物），每道约 1.6 秒内做出该表情即算命中；3 道里对 2 道即通过并进入下一个表情，否则重试本测试。测试失败不会卡住流程，可随时跳过整个校准。
+- 校准流程：五个表情逐个采样，其中微笑、皱眉、张大嘴三个会进入小测试——连续端出 3 道菜（微笑用正常食物，皱眉与张大嘴用不能吃的异物：一个练拒绝，一个练误吞后催吐），每道约 1.6 秒内做出该表情即算命中；3 道里对 2 道即通过并进入下一个表情，否则重试本测试。放松与闭眼只采样、不测试。测试失败不会卡住流程，可随时跳过测试或整个校准。
 - 每轮勺子到达时按当时的表情判定：
   - 微笑：正常食物 +10 分；超现实食物 +30 分、不适 +5；不可食物（异物）被吃下，不适 +10。
   - 拒绝：异物 +10 分；正常/超现实食物不加分、不加不适。
@@ -81,7 +81,7 @@ The meaning of each expression is no longer listed on the start screen; it is ex
 
 - Camera mode: smile = accept; frown or lowered brows = reject; close both eyes and hold for ≈0.5 s = defend; open your mouth wide = rescue.
 - Keyboard demo (no camera): `S` smile, `F` refusal, `V` vomit, `B` blink; release the key to relax. The demo needs no calibration.
-- Calibration flow: each of the five expressions is sampled, then immediately tested on 3 dishes (normal food for smile/relaxed/vomit/blink, inedible objects for refusal). Make the same face within ~1.6 s per dish to score a hit; 2 of 3 passes and moves to the next expression, otherwise the test retries. A failed test never blocks progress, and the whole calibration can still be skipped at any time.
+- Calibration flow: all five expressions are sampled, but only smile, frown and wide-mouth get a food test — 3 dishes each (smile on normal food; frown and wide-mouth on inedible objects, one practising refusal and the other purging a swallowed object). Make the same face within ~1.6 s per dish to score a hit; 2 of 3 passes and moves on, otherwise the test retries. Relaxed and closed eyes are sampled but never tested. A failed test never blocks progress; the test or the whole calibration can be skipped at any time.
 - When the spoon arrives:
   - Smile: normal food +10 points; surreal food +30 points and +5 discomfort; inedible object eaten → +10 discomfort.
   - Refusal: inedible object +10 points; normal/surreal food costs and earns nothing.
