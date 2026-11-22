@@ -68,8 +68,8 @@
   {
     "path": "assets/fonts/FusionPixel12-zh_hans-subset.woff2",
     "source": "https://github.com/TakWolf/fusion-pixel-font/releases/tag/2026.11.10 (12px-proportional, subset built by scripts/build-pixel-cjk-font.mjs)",
-    "bytes": 26400,
-    "sha256": "2b1f1bc74013404330470069840002de396db0233ebdda10c0f09ee0bad61f96"
+    "bytes": 26856,
+    "sha256": "031eabf1aae8425482ebe6f2eddb6e02063b571cf8572d4ba19bd3d88db6350a"
   },
   {
     "path": "assets/fonts/fusion-pixel-OFL.txt",
