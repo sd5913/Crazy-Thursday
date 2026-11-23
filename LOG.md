@@ -73,3 +73,8 @@ Status: local working-tree changes developed with AI assistance at the repositor
 ## 2026-11-19 — Local calibration fix and eye presets
 
 - Local changes (not yet published): set the eye hold default to 200 ms and each eye’s openness limit to 0.1; corrected the food catalogue reference used by the trial handoff. The web build passed; the font manifest mismatch was confirmed in the upstream baseline. Real-camera verification remains open.
+
+## 2026-11-23 — Local-only ending criteria and feedback iteration (uncommitted)
+
+- Local changes (not yet published): tightened three ending rules — Still Hungry now needs >70% of at least 10 surreal dishes eaten; Sharp Eyes needs >70% of at least 10 foreign objects refused; Pica now requires 100% of discomfort to come from foreign objects (no surreal food eaten). Added `surrealServed`/`surrealEaten` stats and updated bilingual result-hint copy, the rules document and this log.
+- Added per-outcome sound effects (eat, rescue buzz, vomit, wrong-eat), a three-expression post-calibration food test, and unified the tutorial text with the game's pixel font. Node tests and the web build passed; the pre-existing font-license manifest mismatch remains. Real-camera verification remains open.

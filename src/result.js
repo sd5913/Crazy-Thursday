@@ -28,7 +28,8 @@ export const RESULT_PHOTO = {
 };
 
 export const CTHULHU_STREAK = 6;
-export const SHARP_EYES_MIN_FOREIGN = 3;
+export const SHARP_EYES_MIN_FOREIGN = 10;
+export const STILL_HUNGRY_MIN_SURREAL = 10;
 export const LUCKY_NUMBER = 67;
 
 // Which stat hit 67 determines which number the share card spotlights.
@@ -50,6 +51,8 @@ export function createResultStats() {
     eatScore: 0, // points from actually eating (correct + surreal accepts)
     foreignServed: 0, // inedible items = foreign_object + lookalike
     foreignRefused: 0,
+    surrealServed: 0, // surreal dishes served this run
+    surrealEaten: 0, // surreal dishes actually accepted and eaten
     foreignDiscomfort: 0, // net APPLIED discomfort, not nominal deltas
     surrealDiscomfort: 0,
     defenseStreak: 0,
@@ -68,6 +71,10 @@ export function recordServe(stats, { item, intent, outcome, appliedDiscomfort = 
   if (category === 'foreign') {
     stats.foreignServed += 1;
     if (outcome.type === OUTCOME.CORRECT_REJECT) stats.foreignRefused += 1;
+  }
+  if (category === 'surreal') {
+    stats.surrealServed += 1;
+    if (outcome.type === OUTCOME.SURREAL_ACCEPT) stats.surrealEaten += 1;
   }
   if (intent !== INTENT.NEUTRAL) stats.reactions += 1;
   if (outcome.type === OUTCOME.CORRECT_ACCEPT || outcome.type === OUTCOME.SURREAL_ACCEPT) {
@@ -105,9 +112,13 @@ export function determineResult(state, stats, seconds = 0) {
   if (state.score > 500 && state.score > 0 && stats.eatScore / state.score > 0.5) return RESULT.GLUTTON;
   if (stats.reactions === 0) return RESULT.VEGETATIVE;
   if (state.maxCombo >= 20) return RESULT.MASK;
-  if (discomfort > 0 && stats.surrealDiscomfort / discomfort > 0.7) return RESULT.STILL_HUNGRY;
+  // Ate >70% of at least 10 surreal dishes served.
+  if (stats.surrealServed >= STILL_HUNGRY_MIN_SURREAL
+    && stats.surrealEaten / stats.surrealServed > 0.7) return RESULT.STILL_HUNGRY;
+  // Refused >70% of at least 10 foreign objects served.
   if (stats.foreignServed >= SHARP_EYES_MIN_FOREIGN
     && stats.foreignRefused / stats.foreignServed > 0.7) return RESULT.SHARP_EYES;
-  if (discomfort > 0 && stats.foreignDiscomfort / discomfort > 0.7) return RESULT.PICA;
+  // 100% of the discomfort came from foreign objects: no surreal food eaten.
+  if (discomfort > 0 && stats.surrealDiscomfort === 0 && stats.foreignDiscomfort === discomfort) return RESULT.PICA;
   return RESULT.OBSERVATION;
 }

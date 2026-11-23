@@ -33,6 +33,7 @@ const FRENZY_RESULT_MS = FRENZY_TRAVEL_MS / 3;
 import { t, getLanguage, faceLabel, onLanguageChange } from './i18n.js';
 import { foodText } from './food-catalogue.js';
 import { GLITCH_PHOTO } from './cthulhu.js';
+import { createSfx } from './sfx.js';
 import {
   createResultStats, recordServe, recordRescue, determineResult, comboScoreBonus,
   sixtySevenField, RESULT, RESULT_PHOTO, CTHULHU_STREAK,
@@ -68,6 +69,7 @@ let rerenderOverlay = null;
 
 export async function startGame(mode = 'camera', opts = {}) {
   const eyeHold = createEyeHold();
+  const sfx = createSfx((src) => new Audio(src));
   const el = {
     video: document.getElementById('cam'),
     bg: document.getElementById('bg'),
@@ -392,6 +394,7 @@ export async function startGame(mode = 'camera', opts = {}) {
     setDiscomfort();
     el.bg.src = GLITCH_PHOTO;
     document.body.classList.add('cthulhu-mode');
+    sfx.stopAll(); // the frenzy silences feeding cues
     setAmbient(null); // the frenzy replaces all normal feeding feedback
     setSubtitle(t('cthulhuChant'));
   }
@@ -419,6 +422,7 @@ export async function startGame(mode = 'camera', opts = {}) {
     });
     setScore();
     setDiscomfort();
+    sfx.onServe(outcome.type); // bite sound; a swallowed object starts the rescue buzz
 
     // Correct plays AND eye-defense both accelerate the game (level up).
     if (outcome.type === OUTCOME.CORRECT_ACCEPT || outcome.type === OUTCOME.CORRECT_REJECT || outcome.type === OUTCOME.SURREAL_ACCEPT || outcome.type === OUTCOME.DEFENDED) {
@@ -490,6 +494,7 @@ export async function startGame(mode = 'camera', opts = {}) {
     state.discomfort = applyRescue(before, success);
     recordRescue(state.stats, state.discomfort - before);
     setDiscomfort();
+    sfx.onRescue(success); // stop buzz; vomit sound or wrong-eat sound
     // Object rejected -> green; object finally swallowed -> red.
     setAmbient(success ? 'green' : 'red');
     setSubtitle(success ? t('rescueUp', { n: before - state.discomfort }) : t('rescueHeld'));
@@ -532,6 +537,7 @@ export async function startGame(mode = 'camera', opts = {}) {
     });
     el.bg.src = 'assets/bg.jpg';
     document.body.classList.remove('cthulhu-mode');
+    sfx.stopAll();
     setAmbient(null);
     setScore();
     setDiscomfort();
@@ -560,6 +566,7 @@ export async function startGame(mode = 'camera', opts = {}) {
 
   async function gameOver() {
     state.phase = 'gameover';
+    sfx.stopAll(); // no feeding cue stuck on the result screen
     setAmbient(null); // no feeding glow on the result screen
     const seconds = state.settleSeconds ?? (state.settleSeconds = Math.round((performance.now() - state.startTime) / 1000));
     if (!state.failShot) state.failShot = captureFrame(); // fallback grab if no prior fail

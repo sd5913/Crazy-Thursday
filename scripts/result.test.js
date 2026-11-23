@@ -7,7 +7,7 @@ import { GLITCH_NAME, GLITCH_PHOTO } from '../src/cthulhu.js';
 import {
   RESULT, RESULT_PHOTO, createResultStats, recordServe, recordRescue,
   determineResult, comboScoreBonus, sixtySevenField, LUCKY_NUMBER,
-  CTHULHU_STREAK, SHARP_EYES_MIN_FOREIGN,
+  CTHULHU_STREAK, SHARP_EYES_MIN_FOREIGN, STILL_HUNGRY_MIN_SURREAL,
 } from '../src/result.js';
 
 const run = (over = {}) => ({ score: 0, discomfort: 0, maxCombo: 0, ...over });
@@ -38,6 +38,8 @@ test('serve stats track eating points, refusals, reactions and defense streak', 
   assert.equal(s.eatScore, SCORING.CORRECT_POINTS + SCORING.SURREAL_POINTS);
   assert.equal(s.foreignServed, 1);
   assert.equal(s.foreignRefused, 1);
+  assert.equal(s.surrealServed, 1);
+  assert.equal(s.surrealEaten, 1);
   assert.equal(s.reactions, 4); // defense is a reaction too
   assert.equal(s.defenseStreak, 1);
   serve(s, food, INTENT.NEUTRAL);
@@ -115,34 +117,50 @@ test('vegetative: no reactions at all outranks pica', () => {
   assert.equal(determineResult(run({ discomfort: 100 }), s), RESULT.PICA);
 });
 
+test('pica: 100% of discomfort from foreign objects, no surreal eaten', () => {
+  const s = stats({ reactions: 20, foreignDiscomfort: 100, foreignServed: 4 });
+  assert.equal(determineResult(run({ discomfort: 100 }), s), RESULT.PICA);
+  s.surrealDiscomfort = 1; // any surreal discomfort breaks the 100% rule
+  assert.notEqual(determineResult(run({ discomfort: 100 }), s), RESULT.PICA);
+  s.surrealDiscomfort = 0;
+  s.foreignDiscomfort = 99; // partial foreign share
+  assert.notEqual(determineResult(run({ discomfort: 100 }), s), RESULT.PICA);
+});
+
 test('mask: peak combo >= 20 outranks the discomfort-based results', () => {
   const s = stats({ reactions: 30, surrealDiscomfort: 80 });
   assert.equal(determineResult(run({ discomfort: 100, maxCombo: 20 }), s), RESULT.MASK);
   assert.notEqual(determineResult(run({ discomfort: 100, maxCombo: 19 }), s), RESULT.MASK);
 });
 
-test('still hungry: surreal share strictly above 70%', () => {
-  const s = stats({ reactions: 30, surrealDiscomfort: 71 });
+test('still hungry: ate >70% of at least 10 surreal dishes served', () => {
+  assert.equal(STILL_HUNGRY_MIN_SURREAL, 10);
+  const s = stats({ reactions: 30, surrealServed: 10, surrealEaten: 8 });
   assert.equal(determineResult(run({ discomfort: 100 }), s), RESULT.STILL_HUNGRY);
-  s.surrealDiscomfort = 70;
+  s.surrealEaten = 7; // exactly 70%
   assert.notEqual(determineResult(run({ discomfort: 100 }), s), RESULT.STILL_HUNGRY);
+  s.surrealEaten = 10; // full ratio but below the sample floor
+  s.surrealServed = STILL_HUNGRY_MIN_SURREAL - 1;
+  assert.notEqual(determineResult(run({ discomfort: 100 }), s), RESULT.STILL_HUNGRY);
+  // Discomfort share no longer matters.
+  s.surrealServed = 10;
+  s.surrealDiscomfort = 0;
+  assert.equal(determineResult(run({ discomfort: 100 }), s), RESULT.STILL_HUNGRY);
 });
 
-test('sharp eyes: foreign-only denominator, minimum sample, outranks pica', () => {
+test('sharp eyes: refused >70% of at least 10 foreign objects', () => {
+  assert.equal(SHARP_EYES_MIN_FOREIGN, 10);
   const s = stats({ reactions: 30, foreignServed: 10, foreignRefused: 8, foreignDiscomfort: 80 });
   assert.equal(determineResult(run({ discomfort: 100 }), s), RESULT.SHARP_EYES);
   s.foreignRefused = 7; // exactly 70%
-  assert.equal(determineResult(run({ discomfort: 100 }), s), RESULT.PICA);
-  s.foreignServed = SHARP_EYES_MIN_FOREIGN - 1;
-  s.foreignRefused = s.foreignServed; // 2/2, still below the sample floor
   assert.notEqual(determineResult(run({ discomfort: 100 }), s), RESULT.SHARP_EYES);
-});
-
-test('pica: foreign share strictly above 70%', () => {
-  const s = stats({ reactions: 20, foreignDiscomfort: 71, foreignServed: 4 });
-  assert.equal(determineResult(run({ discomfort: 100 }), s), RESULT.PICA);
-  s.foreignDiscomfort = 70;
-  assert.notEqual(determineResult(run({ discomfort: 100 }), s), RESULT.PICA);
+  s.foreignRefused = 10; // full ratio but below the sample floor
+  s.foreignServed = SHARP_EYES_MIN_FOREIGN - 1;
+  assert.notEqual(determineResult(run({ discomfort: 100 }), s), RESULT.SHARP_EYES);
+  // Pica no longer fires from a mere 70% share.
+  s.foreignServed = 10;
+  s.foreignRefused = 0;
+  assert.equal(determineResult(run({ discomfort: 100 }), s), RESULT.OBSERVATION);
 });
 
 test('observation is the fallback, including a defense-only death', () => {

@@ -50,9 +50,9 @@ The meaning of each expression is no longer listed on the start screen; it is ex
 | 3 | 大胃王 | 总分 > 500，且进食得分占总分的比例 > 50% | `aha.jpg` |
 | 4 | 植物人 | 全程没有任何表情反应（闭眼也算表情） | 失败抓拍 |
 | 5 | 变相怪杰 | 本局最高连击 ≥ 20 | `TheMask.jpg` |
-| 6 | 我还能吃… | 超现实食物造成的不适 > 结算时不适的 70% | 失败抓拍 |
-| 7 | 火眼金睛 | 拒绝的异物 > 所端异物的 70%，且至少端出 3 件异物 | `sharpeyes.png` |
-| 8 | 异食癖 | 异物造成的不适 > 结算时不适的 70% | 失败抓拍 |
+| 6 | 我还能吃… | 吃下的超现实食物 > 所端超现实食物的 70%，且至少端出 10 件超现实食物 | 失败抓拍 |
+| 7 | 火眼金睛 | 拒绝的异物 > 所端异物的 70%，且至少端出 10 件异物 | `sharpeyes.png` |
+| 8 | 异食癖 | 100% 的不适来自异物（没有吃下任何超现实食物） | 失败抓拍 |
 | 9 | 留院观察 | 以上均不满足（兜底） | 失败抓拍 |
 
 - 「异物」包括 `foreign_object` 与 `lookalike`（共 57 种不可食物）。
@@ -112,9 +112,9 @@ The meaning of each expression is no longer listed on the start screen; it is ex
 | 3 | Bon appétit | Score above 500 AND eating score > 50% of the total | `aha.jpg` |
 | 4 | Vegetative | No expression at all during the entire run (blinking counts as an expression) | failure snapshot |
 | 5 | The Mask | Peak combo ≥ 20 | `TheMask.jpg` |
-| 6 | I Can Still Eat… | Discomfort from surreal food > 70% of final discomfort | failure snapshot |
-| 7 | Sharp eyes | Refused inedible objects > 70% of inedible objects served, with at least 3 served | `sharpeyes.png` |
-| 8 | Pica | Discomfort from inedible objects > 70% of final discomfort | failure snapshot |
+| 6 | I Can Still Eat… | Ate surreal food > 70% of surreal dishes served, with at least 10 served | failure snapshot |
+| 7 | Sharp eyes | Refused inedible objects > 70% of inedible objects served, with at least 10 served | `sharpeyes.png` |
+| 8 | Pica | 100% of discomfort came from foreign objects (no surreal food eaten) | failure snapshot |
 | 9 | Under Observation | None of the above (fallback) | failure snapshot |
 
 - "Inedible objects" covers both `foreign_object` and `lookalike` (57 items).
