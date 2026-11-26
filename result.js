@@ -40,10 +40,11 @@ export function sixtySevenField({ score, seconds, maxCombo }) {
   return null;
 }
 
-// Every combo increase pays out points equal to the new streak length.
-// Resets and steady states pay nothing.
+// The first link of a combo pays nothing; from the second onward each new
+// link pays points equal to the streak length. Resets pay nothing.
 export function comboScoreBonus(previousCombo, nextCombo) {
-  return nextCombo > previousCombo ? nextCombo : 0;
+  if (nextCombo <= previousCombo || nextCombo < 2) return 0;
+  return nextCombo;
 }
 
 export function createResultStats() {
