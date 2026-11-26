@@ -34,6 +34,7 @@ import { t, getLanguage, faceLabel, onLanguageChange } from './i18n.js';
 import { foodText } from './food-catalogue.js';
 import { GLITCH_PHOTO } from './cthulhu.js';
 import { createSfx } from './sfx.js';
+import { preloadImage, prefetchImages } from './food-image.js';
 import {
   createResultStats, recordServe, recordRescue, determineResult, comboScoreBonus,
   sixtySevenField, RESULT, RESULT_PHOTO, CTHULHU_STREAK,
@@ -361,27 +362,38 @@ export async function startGame(mode = 'camera', opts = {}) {
   }
 
   // --- round flow ----------------------------------------------------------
+  let roundToken = 0;
   function startRound() {
+    const token = ++roundToken;
     state.round += 1;
     eyeHold.reset();
     setAmbient(null); // each serve clears the previous round's feedback glow
     state.closedSince = 0; // each serve starts a fresh eyes-shut hold
     state.item = randomItem();
-    el.item.src = state.item.image;
-    el.item.alt = foodText(state.item, getLanguage()).name;
-    const speed = speedForLevel(state.level);
-    state.phase = 'serving';
-    state.phaseStart = performance.now();
-    state.phaseDuration = state.cthulhu ? FRENZY_TRAVEL_MS : speed.travelMs;
+    // Hold the spoon and the timer until this dish is actually decoded. On a
+    // slow hosted site, setting src alone leaves the previous picture on
+    // screen while the new round already runs, so image and judgement drift.
+    state.phase = 'loading';
     el.spoon.style.opacity = '0';
     el.spoon.style.transform = 'translate(-74%, -70%) scale(2)';
-    if (state.cthulhu) {
-      setSubtitle(t('cthulhuChant')); // the only line the frenzy allows
-      return;
-    }
-    const itemText = foodText(state.item, getLanguage());
-    const nurseLines = t('nurseLines');
-    setSubtitle(itemText.line || nurseLines[state.round % nurseLines.length]);
+    preloadImage(state.item.image).then(() => {
+      if (token !== roundToken) return; // a newer round superseded this one
+      el.item.src = state.item.image;
+      el.item.alt = foodText(state.item, getLanguage()).name;
+      const speed = speedForLevel(state.level);
+      state.phase = 'serving';
+      state.phaseStart = performance.now();
+      state.phaseDuration = state.cthulhu ? FRENZY_TRAVEL_MS : speed.travelMs;
+      if (state.cthulhu) {
+        setSubtitle(t('cthulhuChant')); // the only line the frenzy allows
+        return;
+      }
+      const itemText = foodText(state.item, getLanguage());
+      const nurseLines = t('nurseLines');
+      setSubtitle(itemText.line || nurseLines[state.round % nurseLines.length]);
+      // Warm a few random dishes so later rounds are usually instant.
+      prefetchImages(Array.from({ length: 3 }, () => randomItem().image));
+    });
   }
 
   function enterCthulhu() {
@@ -566,6 +578,7 @@ export async function startGame(mode = 'camera', opts = {}) {
 
   async function gameOver() {
     state.phase = 'gameover';
+    roundToken += 1; // invalidate any dish still decoding from the last round
     sfx.stopAll(); // no feeding cue stuck on the result screen
     setAmbient(null); // no feeding glow on the result screen
     const seconds = state.settleSeconds ?? (state.settleSeconds = Math.round((performance.now() - state.startTime) / 1000));
