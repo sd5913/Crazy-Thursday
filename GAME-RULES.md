@@ -38,8 +38,8 @@ The meaning of each expression is no longer listed on the start screen; it is ex
 ### 连击
 
 - 正确接受、正确拒绝、接受/拒绝超现实食物会延续连击；无表情、防御、错吃会清零。
-- 每次连击数上升，额外获得与「上升后的连击数」相等的分数（第一连 +1，第二连 +2……）。
-- 连击加分计入总分，但不计入「进食得分」（大胃王判定只算真正吃进去的分数）。
+- 第一连不加分；从第二连起，每次连击数上升额外获得与「上升后的连击数」相等的分数（第二连 +2，第三连 +3……）。
+- 连击加分计入总分，也计入「进食得分」（大胃王判定的分子含连击分）。
 
 ### 结算判定（从上到下，命中即停止）
 
@@ -100,8 +100,8 @@ The meaning of each expression is no longer listed on the start screen; it is ex
 ### Combo
 
 - Correct accepts, correct rejects, and accepting/refusing surreal food keep the streak; no expression, defense, and wrong bites break it.
-- Every increase awards points equal to the new combo count (+1, +2, +3 …).
-- Combo bonuses count toward the total score but NOT toward "eating score" (the glutton check only counts food actually eaten).
+- The first link pays nothing; from the second onward each increase awards points equal to the new combo count (+2, +3, +4 …).
+- Combo bonuses count toward both the total score AND "eating score" (the glutton check's numerator includes combo points).
 
 ### Endings (first match wins, top to bottom)
 

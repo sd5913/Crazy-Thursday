@@ -169,8 +169,8 @@ test('observation is the fallback, including a defense-only death', () => {
   assert.equal(determineResult(run({ discomfort: 0 }), stats({ reactions: 5 })), RESULT.OBSERVATION);
 });
 
-test('each combo increase awards points equal to the new streak length', () => {
-  assert.equal(comboScoreBonus(0, 1), 1);
+test('combo pays nothing on the first link, then the streak length', () => {
+  assert.equal(comboScoreBonus(0, 1), 0); // first link is free
   assert.equal(comboScoreBonus(1, 2), 2);
   assert.equal(comboScoreBonus(9, 10), 10);
   assert.equal(comboScoreBonus(4, 4), 0);

@@ -449,7 +449,10 @@ export async function startGame(mode = 'camera', opts = {}) {
     const comboBonus = comboScoreBonus(previousCombo, state.combo);
     if (comboBonus) {
       state.score += comboBonus;
-      setScore(); // combo points count towards the final score and result
+      // Combo points are earned by eating, so they count as eating score too
+      // (the Glutton ending uses eatScore / total score).
+      state.stats.eatScore += comboBonus;
+      setScore();
     }
     setCombo();
 
