@@ -1,0 +1,697 @@
+[hidden] { display: none !important; }
+
+.calibration-clock { position: relative; width: clamp(7rem, 20vw, 12rem); max-width: 100%; aspect-ratio: 1; margin: .75rem auto; }
+.calibration-clock .calibration-image { position: absolute; inset: 12%; width: 76%; height: 76%; margin: 0; }
+.calibration-ring { display: block; width: 100%; height: 100%; overflow: visible; transform: rotate(-90deg); }
+.calibration-ring circle { fill: none; stroke-width: 4; }
+.calibration-ring-track { stroke: var(--accent); opacity: .2; }
+.calibration-ring-progress { stroke: var(--accent); stroke-linecap: round; }
+/* Post-calibration food test: a wide countdown bar and the current dish. */
+.trial-clock { width: min(90%, 22rem); height: .55rem; margin: .8rem auto; background: rgba(255,255,255,.12); border-radius: 4px; overflow: hidden; }
+.trial-progress { height: 100%; width: 0; background: var(--accent); transition: width .08s linear; }
+.trial-food { display: block; width: clamp(5rem, 16vw, 9rem); max-width: 100%; aspect-ratio: 1; object-fit: contain; margin: .5rem auto; filter: drop-shadow(0 6px 10px rgba(0,0,0,.4)); }
+
+.face-debug {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+  background: var(--bg);
+  color: #f5f0df;
+  font: 1.15rem/1.45 'Courier New', 'Fusion Pixel 12', monospace;
+}
+.face-debug h1 { font: 1.2rem var(--pixel-display); }
+.face-debug h2 { font-size: 1.2rem; margin-block: 1rem .5rem; }
+.face-debug p { font-size: .95rem; overflow-wrap: anywhere; }
+.debug-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
+.face-debug button { font: inherit; cursor: pointer; padding: .65rem 1rem; }
+.debug-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 5fr); gap: 1.25rem; flex: 1; min-height: 0; }
+.debug-layout > div { min-width: 0; min-height: 0; }
+.debug-sidebar { overflow-y: auto; scrollbar-width: thin; }
+.debug-content { overflow-y: auto; overscroll-behavior: contain; padding-right: .5rem; }
+.debug-sidebar .debug-metrics { grid-template-columns: minmax(0, 1fr); gap: .2rem; font-size: .8rem; }
+.debug-sidebar .debug-metrics dd { margin-bottom: .65rem; }
+.debug-header, .face-debug > p { flex-shrink: 0; }
+#debugCam { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: contain; background: #0b1413; transform: scaleX(-1); border: 1px solid #647c73; }
+.debug-metrics { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .5rem 1rem; font-size: .95rem; }
+.debug-metrics dt { color: var(--accent); }
+.debug-metrics dd { margin: 0; overflow-wrap: anywhere; }
+.debug-table-wrap { overflow-x: auto; }
+.face-debug input[type="number"] { width: 5rem; padding: .4rem; font: inherit; background: #0b1413; color: #f5f0df; border: 1px solid #647c73; }
+.face-debug input:invalid { border-color: #ff9785; }
+.face-debug tr[data-rank="1"] { background: #426b50; box-shadow: inset 4px 0 #e6f397; }
+.face-debug tr[data-rank="2"] { background: #304d3c; box-shadow: inset 4px 0 #aac779; }
+.face-debug tr[data-rank="3"] { background: #243e32; box-shadow: inset 4px 0 #73985c; }
+.face-debug tr[data-selected="true"] { font-weight: bold; }
+#debugSignals td:last-child { min-width: 16rem; overflow-wrap: anywhere; }
+.debug-decisions { grid-column: 1 / -1; }
+.debug-decisions th { white-space: nowrap; }
+#debugSignals td:first-child { min-width: 9rem; }
+.face-debug summary { cursor: pointer; margin-block: 1rem; }
+.debug-brow { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .85rem; }
+.calibration-image { display: block; width: clamp(6rem, 18vw, 10rem); max-width: 100%; aspect-ratio: 1; object-fit: contain; margin: .75rem auto; }
+.debug-state-guide { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #647c73; }
+.state-face { width: 5rem; height: 5rem; display: block; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; fill: var(--accent); }
+.debug-state-guide th, .debug-state-guide td { vertical-align: middle; }
+.debug-state-guide td:nth-child(4), .debug-state-guide td:nth-child(5) { min-width: 13rem; line-height: 1.7; }
+.face-debug button:disabled { opacity: .5; cursor: not-allowed; }
+.face-debug table { width: 100%; border-collapse: collapse; font-size: .85rem; text-align: left; }
+.face-debug th, .face-debug td { padding: .45rem; border-bottom: 1px solid #405b52; }
+.debug-log { margin: 0; height: 16rem; overflow: auto; padding: .75rem; background: #0b1413; border: 1px solid #647c73; font: .8rem/1.6 'Courier New', monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 720px) {
+  .debug-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: .75rem; }
+  .debug-sidebar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: .5rem; max-height: 28vh; }
+  .debug-sidebar #debugStatus { grid-column: 1; margin: 0; font-size: .75rem; }
+  .debug-sidebar .debug-metrics { grid-column: 2; grid-row: 1 / 3; margin: 0; }
+  .debug-header h1 { font-size: 1rem; }
+  .face-debug > p { font-size: .75rem; margin-block: .4rem; }
+}
+
+:root {
+  font-family: var(--pixel-body);
+  color: #f5f0df;
+  --bg: #162a29;
+  --accent: #f3b66c;
+  --danger: #e0553f;
+  /* Pixel typefaces across the WHOLE app. --pixel-display is the chunky arcade
+     font for short labels (title, badge, combo, share-card heading);
+     --pixel-body is the readable pixel font for longer text (HUD, subtitle,
+     panel, share-card stats). Both load from local assets/fonts through index.html;
+     'Courier New' is only an offline fallback, never the intended look. */
+  --pixel-display: 'Press Start 2P', 'Fusion Pixel 12', 'Courier New', monospace;
+  --pixel-body: 'VT323', 'Fusion Pixel 12', 'Courier New', monospace;
+  --ui-font: var(--pixel-body);
+  /* Shared type scale: the top title and the bottom badge main line are the
+     same size, while the left/right status readouts are one step smaller. */
+  --ui-title: clamp(1.15rem, 2.25vw, 1.8rem);
+  --ui-side: clamp(1.35rem, 1.9vw, 1.5rem);
+  /* One set of layout tokens drives every corner HUD element, so the same
+     spacing works on a phone, a short laptop window and a wide desktop. */
+  --hud-gutter: clamp(.75rem, 2.2vw, 1.4rem);
+  --hud-bottom: max(clamp(.75rem, 2vh, 1.4rem), env(safe-area-inset-bottom, 0px));
+  --hud-top: max(.9rem, env(safe-area-inset-top, 0px));
+  background: var(--bg);
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+
+.stage {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 18%, #2c4a44, transparent 55%), var(--bg);
+}
+
+/* Background placeholder image slot (art replaces assets/bg.svg). */
+.bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+
+/* Camera preview sits behind everything, mirrored, faint, so the player can see
+   their own face act as the patient. Detection still runs on this <video>. */
+#cam {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+  opacity: 0.32;
+  z-index: 1;
+}
+
+/* Top status bar: SCORE / DISCOMFORT sit in the outer grid columns. The title
+   is centred against the whole bar (not against a 1fr column), so unequal
+   left/right widths can no longer push it off-centre. */
+.hud {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: .5rem;
+  padding: var(--hud-top) var(--hud-gutter) clamp(.6rem, 1.5vh, 1rem);
+  z-index: 3;
+  pointer-events: none;
+}
+/* Status-bar placeholder behind the score / discomfort readouts. */
+.hud-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.85;
+  z-index: -1;
+  border-radius: 0 0 1rem 1rem;
+}
+/* SCORE gets its own, larger step so the number reads at a glance;
+   DISCOMFORT keeps the smaller side size to leave room for the title. */
+.score {
+  grid-column: 1;
+  justify-self: start;
+  font: 700 clamp(1.6rem, 2.4vw, 1.9rem) var(--ui-font);
+  letter-spacing: .08em;
+  background: rgba(0,0,0,.35);
+  padding: .4rem .7rem;
+  border-radius: .4rem;
+}
+.score span { color: var(--accent); }
+/* Nudged below the very top edge: the bar no longer sits on the notch / the
+   status-bar art, and reads as its own row instead of crowding the title. */
+.discomfort {
+  grid-column: 3;
+  justify-self: end;
+  max-width: 100%;
+  margin-top: clamp(.55rem, 1.8vh, 1.3rem);
+  text-align: right;
+  font: 700 var(--ui-side) var(--ui-font);
+  letter-spacing: .1em;
+}
+.discomfort .bar {
+  margin-top: .3rem;
+  margin-left: auto;
+  width: clamp(110px, 22vw, 280px);
+  max-width: 100%;
+  height: clamp(10px, 1.6vh, 14px);
+  background: rgba(255,255,255,.15);
+  border-radius: 8px; overflow: hidden;
+}
+/* The frenzy bar is meant to break out of its track and off the screen. */
+.cthulhu-mode .discomfort .bar { overflow: visible; }
+#discomfortFill {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, #f3b66c, var(--danger));
+  transition: width .25s ease;
+}
+
+.scene {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.spoon {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: min(46vw, 480px);
+  /* Anchor the scale on the spoon bowl so the food stays pinned to the
+     screen centre while the whole spoon+food group grows (2 -> 4). */
+  transform-origin: 74% 70%;
+  transform: translate(-74%, -70%) scale(2);
+  z-index: 2;
+  pointer-events: none;
+  transition: opacity .2s ease;
+}
+.spoon-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 6px 14px rgba(0,0,0,.45));
+}
+.spoon .item {
+  position: absolute;
+  left: 61%; top: 40%;
+  width: 26%;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  background: rgba(243,182,108,.18);
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 6px 14px rgba(0,0,0,.45);
+}
+
+/* Feeding feedback: a coloured glow around the screen edges. Sits above the
+   scene but below the HUD/overlay; colour and pulse are driven by game.js via
+   data-tone (good / surreal / wrong / rescue). */
+.ambient {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .18s ease;
+}
+.ambient[data-tone] { opacity: 1; }
+.ambient::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 clamp(48px, 9vw, 120px) clamp(12px, 2.4vw, 34px) var(--ambient-color);
+  transition: box-shadow .18s ease;
+}
+.ambient[data-tone='green']  { --ambient-color: rgba(72, 230, 120, .62); }
+.ambient[data-tone='yellow'] { --ambient-color: rgba(255, 214, 74, .65); }
+.ambient[data-tone='red']    { --ambient-color: rgba(255, 74, 74, .72); }
+/* The whole rescue window flashes yellow until the vomit succeeds or fails. */
+.ambient[data-tone='rescue'] {
+  --ambient-color: rgba(255, 214, 74, .75);
+  animation: ambient-flash .4s steps(1, end) infinite;
+}
+@keyframes ambient-flash {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .12; }
+}
+
+/* Centred on the FULL status bar width, independent of the two side columns. */
+.game-title {
+  position: absolute;
+  left: 50%;
+  top: var(--hud-top);
+  transform: translateX(-50%);
+  white-space: nowrap;
+  text-align: center;
+  font-family: var(--pixel-display);
+  font-weight: 800;
+  font-size: var(--ui-title);
+  letter-spacing: .04em;
+  color: #f5f0df;
+  text-shadow: 0 2px 8px rgba(0,0,0,.6);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Chinese only has four short glyphs here, so it can take a larger status-bar
+   title than the eleven-character English one without hitting the readouts. */
+.game-title:lang(zh) { font-size: clamp(1rem, 3.2vw, 2.4rem); }
+
+/* Bottom HUD: the badge and the speech bubble share ONE layout container, so
+   they can never overlap. Wide windows place them side by side; narrow and
+   short windows stack them (see the media queries at the end of the file). */
+.bottom-hud {
+  position: absolute;
+  left: var(--hud-gutter);
+  right: var(--hud-gutter);
+  bottom: var(--hud-bottom);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: clamp(.5rem, 1.4vh, .9rem);
+  pointer-events: none;
+}
+/* Shared box for the bubble art, the subtitle text and the combo badge. */
+.bubble {
+  position: relative;
+  flex: none;
+  width: min(100%, 640px);
+  aspect-ratio: 640 / 120;
+  margin: 0 auto;
+}
+.hint-bubble {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+  z-index: 2;
+  pointer-events: none;
+}
+/* One type scale for every line: the bubble must not resize text by length.
+   Padding on all four sides keeps two-line nurse lines clear of the artwork. */
+.subtitle {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  padding: 12px 24px;
+  text-align: center;
+  font-size: clamp(1.25rem, 2.8vw, 1.9rem);
+  line-height: 1.15;
+  font-weight: 700;
+  font-family: var(--pixel-body);
+  text-shadow: 0 2px 6px rgba(0,0,0,.7);
+  overflow-wrap: anywhere;
+}
+/* Fixed width: the box no longer swings between a narrow "GAG" and a wide
+   "NO FACE / not detected" state, so its right edge always stays put. */
+.badge {
+  align-self: flex-start;
+  width: clamp(11.5rem, 38vw, 15.5rem);
+  max-width: 100%;
+  text-align: center;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+  font-family: var(--pixel-display);
+  font-weight: 700;
+  line-height: 1.15;
+  padding: .65rem .85rem;
+  border-radius: .5rem;
+  background: rgba(0,0,0,.45);
+  border: 2px solid #6b8e87;
+}
+/* Two-line badge: primary label over a smaller note. */
+.badge-main {
+  font-size: var(--ui-title);
+  letter-spacing: .04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.badge-sub {
+  font-family: var(--pixel-body);
+  font-size: var(--ui-side);
+  letter-spacing: .05em;
+  opacity: .85;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.badge[data-expr="smile"] { border-color: #7bd88f; color: #bdf3c8; }
+.badge[data-expr="refusal"] { border-color: #e0a93f; color: #f6d79a; }
+.badge[data-expr="vomit"] { border-color: var(--danger); color: #ffb3a3; }
+.badge[data-expr="neutral"], .badge[data-expr="none"] { border-color: #6b8e87; }
+/* Combo sits at the top-right corner of the bubble, tilted to the right. */
+.combo {
+  position: absolute;
+  right: .8rem;
+  bottom: calc(100% - 1rem);
+  transform: rotate(10deg);
+  font-family: var(--pixel-display);
+  font-weight: 800;
+  font-size: clamp(.85rem, 3vw, 1.9rem);
+  letter-spacing: .06em;
+  color: var(--accent);
+  text-shadow: 0 2px 8px rgba(0,0,0,.6);
+  pointer-events: none;
+  z-index: 4;
+  white-space: nowrap;
+}
+.combo[hidden] { display: none; }
+.combo.pop { animation: comboPop .25s ease; }
+@keyframes comboPop {
+  0% { transform: rotate(10deg) scale(1.45); }
+  100% { transform: rotate(10deg) scale(1); }
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  background: rgba(10,18,17,.78);
+  backdrop-filter: blur(3px);
+  padding: var(--hud-top) var(--hud-gutter) var(--hud-bottom);
+}
+.overlay[hidden] { display: none; }
+/* The shell hugs the panel so the language toggle can pin to the window's
+   top-right corner and survive showOverlay() replacing the panel's HTML.
+   The button sits fully INSIDE the panel (in its top padding whitespace),
+   compact enough to clear the centred title lines. */
+.panel-shell { position: relative; }
+.lang-toggle {
+  position: absolute;
+  top: .45rem;
+  right: .55rem;
+  z-index: 6;
+  border: 2px solid var(--accent);
+  background: #1d3431;
+  color: var(--accent);
+  font: 700 clamp(1.05rem, 3vw, 1.3rem)/1.15 var(--pixel-body);
+  letter-spacing: .04em;
+  padding: .35rem 1rem;
+  border-radius: .45rem;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(0,0,0,.35);
+}
+.lang-toggle:hover { background: var(--accent); color: #162a29; }
+.panel {
+  width: min(90vw, 480px);
+  max-height: calc(100vh - 2 * var(--hud-gutter));
+  max-height: calc(100dvh - 2 * var(--hud-gutter));
+  overflow-y: auto;
+  background: #1d3431;
+  border: 1px solid #2f4d48;
+  border-radius: 1rem;
+  padding: clamp(1.2rem, 4vw, 2rem);
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0,0,0,.5);
+}
+.panel h1 { margin: .9rem 0 1rem; font-family: var(--pixel-body); font-weight: 400; font-size: clamp(2rem, 8vw, 3.6rem); letter-spacing: .02em; color: var(--accent); text-shadow: 0 2px 10px rgba(0,0,0,.4); }
+.panel p { font-size: clamp(1.15rem, 4vw, 1.6rem); line-height: 1.35; opacity: .9; }
+/* Start-screen copy is pixel type too: VT323 for Latin, Fusion Pixel for Han. */
+.panel > p[data-i18n='startTagline'], .panel .privacy-note { font-family: var(--pixel-body); }
+.panel button, #startBtn {
+  margin-top: 1.4rem;
+  max-width: 100%;
+  border: 0;
+  background: var(--accent);
+  color: #162a29;
+  padding: 1rem 1.4rem;
+  font: 700 clamp(1rem, 3.4vw, 1.3rem) var(--pixel-body);
+  cursor: pointer;
+  border-radius: .5rem;
+}
+.panel strong { color: var(--accent); }
+
+/* Start screen: start > demo >= debug. The debug entry stays clearly
+   visible while the camera game remains the obvious first choice. */
+#startBtn {
+  font-size: clamp(1.15rem, 4vw, 1.55rem);
+  padding: 1.15rem 1.6rem;
+  box-shadow: 0 0 0 3px rgba(243,182,108,.28), 0 8px 18px rgba(0,0,0,.35);
+}
+#demoBtn {
+  background: #e2b371;
+  font-size: clamp(1rem, 3.4vw, 1.25rem);
+  padding: 1.05rem 1.2rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,.28);
+}
+#faceDebugBtn {
+  background: #c99a55;
+  font-size: clamp(1rem, 3.5vw, 1.3rem);
+  padding: 1rem 1.4rem;
+  box-shadow: 0 3px 10px rgba(0,0,0,.22);
+}
+/* Demo + Debug share one row: two equal columns keep them side by side at
+   every width; long labels wrap inside their own column instead of stacking. */
+.menu-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: .9rem;
+  margin-top: 1.4rem;
+}
+.menu-row button { margin-top: 0; min-width: 0; }
+/* The default start screen no longer shows a settings note; the privacy
+   hint sits under the buttons so it cannot be overwritten by that note. */
+#gameSettingsStatus:empty { display: none; }
+.panel .privacy-note {
+  margin: 1.2rem 0 0;
+  font-size: clamp(.95rem, 3.2vw, 1.2rem);
+  opacity: .8;
+}
+/* Calibration: keep Start sampling and Skip clearly separated. */
+.calibration-actions { margin-top: 1.2rem; }
+.calibration-actions button { margin-top: 0; }
+
+/* Result share card shown on Game Over (the failure-frame composite). */
+.result-card {
+  display: block;
+  width: min(78vw, 380px);
+  max-width: 100%;
+  aspect-ratio: 720 / 1080;
+  border-radius: .6rem;
+  /* Leaves the drop shadow visible: the buttons and share line start below it. */
+  margin: .6rem auto clamp(1.6rem, 3.2vh, 2.2rem);
+  box-shadow: 0 6px 18px rgba(0,0,0,.5);
+}
+.card-actions {
+  display: flex;
+  gap: .9rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+/* Quiet escape hatch on the expression test so nobody is stuck. */
+.card-actions .link-button {
+  background: none;
+  border: none;
+  box-shadow: none;
+  text-decoration: underline;
+  opacity: .75;
+  padding: .3rem .5rem;
+  font-size: .8rem;
+}
+/* Game Over: the two short actions share the first row, the longer save action
+   gets its own row. Result-panel type is a step larger than the start /
+   calibration panels on both desktop and phones. */
+.card-actions + .card-actions { margin-top: .85rem; }
+/* Enlarged debug-page language switch to match the menu lang-toggle. */
+#debugLanguage {
+  font: 700 1.05rem var(--pixel-body);
+  letter-spacing: .04em;
+  padding: .5rem 1.1rem;
+}
+.gameover-panel h1 { font-size: clamp(2.6rem, 9vw, 4.4rem); }
+/* The corrupted name is Latin pixel type with combining marks overlaid by a
+   fallback font. Keep the base face pixelated and the type small enough that
+   the scattered marks stay inside the panel. */
+.gameover-panel.glitch-panel h1 {
+  font-family: var(--pixel-body);
+  font-size: clamp(1rem, 2.9vw, 1.55rem);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+/* Type stays put; only the yellow frame shrinks closer to the words so the
+   buttons no longer crowd each other. */
+.gameover-panel .card-actions button {
+  margin-top: 0;
+  padding: clamp(.45rem, 1.4vw, .65rem) clamp(.55rem, 1.6vw, .9rem);
+  font: 700 clamp(1.35rem, 4.4vw, 1.85rem) var(--pixel-body);
+}
+/* Two equal columns keep the short actions on one row even on a narrow phone;
+   each button hugs its own text instead of stretching to the column. */
+.gameover-panel .card-actions.two-up {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .9rem;
+}
+.gameover-panel .card-actions.two-up button,
+.gameover-panel .save-row button {
+  width: auto;
+  max-width: 100%;
+  justify-self: center;
+}
+/* Ending title subtitle: same muted pixel type as the share note, a touch
+   smaller so one concise line fits under even the longest ending name. */
+.gameover-panel .result-hint {
+  margin: -.4rem 0 .8rem;
+  color: #6b8e87;
+  font-family: var(--pixel-body); /* CJK falls through to Fusion Pixel 12 */
+  font-size: clamp(1.15rem, 3.2vw, 1.4rem);
+  line-height: 1.25;
+  opacity: 1;
+}
+/* Outside the PNG on purpose: saving the card never includes this line. */
+.gameover-panel .share-note {
+  margin: .9rem 0 0;
+  color: #6b8e87;
+  font-family: var(--pixel-body); /* Chinese needs the same pixel fallback */
+  font-size: clamp(1.55rem, 4.6vw, 2.2rem);
+  line-height: 1.1;
+  opacity: 1;
+}
+
+/* --- responsive corner layout ------------------------------------------- */
+/* Narrow windows: SCORE, the two-line title and DISCOMFORT share ONE row and
+   are centre-aligned, so the status bar is only as tall as the title. Equal
+   1fr side columns keep the title centred even when the readouts differ. */
+@media (max-width: 760px) {
+  .hud {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: .35rem;
+    padding-top: max(.35rem, env(safe-area-inset-top, 0px));
+  }
+  .score { grid-column: 1; grid-row: 1; }
+  .discomfort {
+    grid-column: 3;
+    grid-row: 1;
+    margin-top: 0;
+    letter-spacing: .04em;
+  }
+  /* Two centred lines ("Expression" / "Feeding") instead of one tiny line.
+     That taller row leaves room for the bar, so it keeps its normal width. */
+  .game-title span { display: block; }
+  /* The enlarged lang-toggle eats into the panel's slim top padding here, so
+     push every panel heading below the button zone. */
+  .panel h1 { margin-top: 2.8rem; }
+  .game-title {
+    position: static;
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: center;
+    align-self: center;
+    transform: none;
+    font-size: var(--ui-title);
+    line-height: 1.1;
+    letter-spacing: .02em;
+  }
+}
+/* Wide windows: badge on the left, centred bubble, empty right cell keeps the
+   bubble truly centred without letting the badge grow into its space. The
+   1080px floor gives the fixed-width badge enough room in the left column. */
+@media (min-width: 1080px) and (min-height: 481px) {
+  .bottom-hud {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: end;
+    gap: clamp(.75rem, 2vw, 1.5rem);
+  }
+  .badge { grid-column: 1; grid-row: 1; align-self: end; }
+  .bubble { grid-column: 2; grid-row: 1; width: min(44vw, 560px); }
+}
+/* Phones: one shared, slightly smaller size plus a taller bubble, so even the
+   longest two-line legend stays clear of the artwork on narrow screens. */
+@media (max-width: 600px) {
+  .badge { padding: .5rem .7rem; gap: .2rem; }
+  .bubble { aspect-ratio: 640 / 190; }
+  .subtitle { font-size: clamp(1.35rem, 4.8vw, 1.8rem); line-height: 1.15; padding: 12px 20px; }
+  .result-card { width: min(70vw, 300px); }
+}
+/* Upright narrow windows get a height floor so wrapped lines still fit;
+   short landscape windows keep their own rule below. */
+@media (max-width: 600px) and (min-height: 481px) {
+  .bubble { min-height: 118px; }
+}
+/* Very narrow phones: keep all three on the same row by trimming only the type
+   sizes, without hiding anything. The bar keeps its normal width and merely
+   follows its grid column via max-width: 100%. */
+@media (max-width: 420px) {
+  .game-title { font-size: .8rem; }
+  .score { font-size: 1.25rem; letter-spacing: .02em; }
+  .discomfort { font-size: 1.15rem; letter-spacing: .02em; }
+}
+/* Landscape phones / short desktop windows: back to a single row and shrink
+   every vertical consumer so the spoon still has room to animate. */
+@media (max-height: 480px) {
+  .hud { padding-top: max(.5rem, env(safe-area-inset-top, 0px)); }
+  .game-title { top: max(.5rem, env(safe-area-inset-top, 0px)); }
+  .discomfort { margin-top: .25rem; }
+  .bottom-hud {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: end;
+    gap: .6rem;
+  }
+  .badge { grid-column: 1; grid-row: 1; width: 11rem; padding: .45rem .6rem; }
+  .bubble { grid-column: 2; grid-row: 1; width: min(100%, 420px); aspect-ratio: 640 / 155; }
+  .badge-main { font-size: .85rem; }
+  .badge-sub { font-size: .8rem; }
+  .subtitle { font-size: clamp(1.25rem, 4vh, 1.6rem); line-height: 1.1; padding: 8px 20px; }
+  .combo { bottom: calc(100% - .6rem); font-size: .9rem; }
+  .spoon { width: min(38vw, 360px); }
+  .panel { padding: 1rem; }
+}
+/* Narrow AND short (landscape phone): one small title line saves height; the
+   three readouts still share the same centre-aligned row. */
+@media (max-width: 760px) and (max-height: 480px) {
+  .game-title span { display: inline; }
+  .game-title { font-size: .8rem; line-height: 1; }
+  .discomfort { margin-top: 0; }
+}
+/* Narrow AND short: the fixed-width badge leaves the bubble only ~280px, so
+   wrapped lines need more height than the plain short-window rule. */
+@media (max-width: 600px) and (max-height: 480px) {
+  .bubble { aspect-ratio: 640 / 220; }
+}
+
+#debugSignals td:nth-child(6) label { display: block; margin-top: .6rem; font-size: .75rem; }
+#debugEyeProgress { display: block; margin-top: .3rem; white-space: nowrap; }
+
+.debug-header-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.debug-special { margin-block: 1rem; }
+.debug-special label { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+
+.debug-signal-group th { padding-top: 1rem; color: var(--accent); }
